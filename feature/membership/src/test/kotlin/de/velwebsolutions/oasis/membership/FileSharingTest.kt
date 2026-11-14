@@ -29,7 +29,7 @@ class FileSharingTest {
 
     @Test
     fun `a file goes to the share sheet with read access for the chosen app`() {
-        val invoice = files.invoice("<html></html>".toByteArray(), "OAS-2")
+        val invoice = files.invoice("<html></html>".toByteArray(), "MC-2")
         FileSharing.shareFile(context, invoice, FileSharing.mimeType(invoice), "Teilen")
         val chooser = nextShare()
         assertEquals(Intent.ACTION_CHOOSER, chooser.action)
@@ -49,8 +49,8 @@ class FileSharingTest {
 
     @Test
     fun `the module keeps its files in the app's cache`() {
-        val invoice = MembershipModule.files(context, Fixtures.session()).invoice(ByteArray(0), "OAS-1")
-        assertEquals(File(context.cacheDir, "Rechnungen/Rechnung-OAS-1.html"), invoice)
+        val invoice = MembershipModule.files(context, Fixtures.session()).invoice(ByteArray(0), "MC-1")
+        assertEquals(File(context.cacheDir, "Rechnungen/Rechnung-MC-1.html"), invoice)
     }
 
     @Test
@@ -62,7 +62,7 @@ class FileSharingTest {
         val session = Fixtures.session()
         val files = MembershipModule.files(context, session)
         assertFalse("the export of a process that ended", leftover.exists())
-        val invoice = files.invoice("<html></html>".toByteArray(), "OAS-3")
+        val invoice = files.invoice("<html></html>".toByteArray(), "MC-3")
         val export = files.export("PK".toByteArray())
         session.signOut()
         assertFalse(invoice.exists())
@@ -71,15 +71,15 @@ class FileSharingTest {
 
     @Test
     fun `a voucher code goes to the share sheet as text`() {
-        FileSharing.shareText(context, "OASIS-1234", "Weitergeben")
+        FileSharing.shareText(context, "MILD-1234", "Weitergeben")
         val send = nextShare().getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)!!
-        assertEquals("OASIS-1234", send.getStringExtra(Intent.EXTRA_TEXT))
+        assertEquals("MILD-1234", send.getStringExtra(Intent.EXTRA_TEXT))
     }
 
     @Test
     fun `without an app to share with nothing happens`() {
         shadowOf(context).checkActivities(true)
-        FileSharing.shareText(context, "OASIS-1234", "Weitergeben")
+        FileSharing.shareText(context, "MILD-1234", "Weitergeben")
         assertNull(shadowOf(context).nextStartedActivity)
     }
 
@@ -93,7 +93,7 @@ class FileSharingTest {
     @Test
     fun `the invoice opens the system print dialog without failing`() {
         // Robolectric's print manager records no jobs; this checks that the call goes through on API 35.
-        InvoicePdf.print(context, WebView(context), "Rechnung-OAS-2")
+        InvoicePdf.print(context, WebView(context), "Rechnung-MC-2")
         assertTrue(context.getSystemService(android.print.PrintManager::class.java).printJobs.isEmpty())
     }
 }

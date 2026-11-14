@@ -130,7 +130,7 @@ class MembershipStateTest {
         assertEquals(payment.id, viewModel.state.value.loadingInvoice)
         viewModel.openInvoice(payment)
         gate.complete(Unit)
-        assertEquals("Rechnung-OAS-2.html", viewModel.state.value.invoiceFile?.name)
+        assertEquals("Rechnung-MC-2.html", viewModel.state.value.invoiceFile?.name)
         assertNull(viewModel.state.value.loadingInvoice)
         viewModel.closeInvoice()
         assertNull(viewModel.state.value.invoiceFile)
@@ -146,7 +146,7 @@ class MembershipStateTest {
     fun `an invoice link downloads the invoice and shows it right away`() = runTest {
         val viewModel = InvoiceViewModel(7, repository, files)
         val file = viewModel.state.value.file.valueOrNull
-        assertEquals("Rechnung-OAS-7.html", file?.name)
+        assertEquals("Rechnung-MC-7.html", file?.name)
         assertEquals(file, viewModel.state.value.preview)
         viewModel.closePreview()
         assertNull(viewModel.state.value.preview)

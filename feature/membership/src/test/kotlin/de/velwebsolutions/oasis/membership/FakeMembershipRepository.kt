@@ -21,7 +21,7 @@ import kotlinx.coroutines.CompletableDeferred
  */
 class FakeMembershipRepository : MembershipRepository {
     var overview: Result<MembershipOverview> = Result.success(Fixtures.overview(Fixtures.subscriptionOverview))
-    var payments: Result<List<MembershipPayment>> = Result.success(listOf(MembershipPayment(2, "OAS-2", null, "5 €")))
+    var payments: Result<List<MembershipPayment>> = Result.success(listOf(MembershipPayment(2, "MC-2", null, "5 €")))
     var invoice: Result<ByteArray> = Result.success("<html>Rechnung</html>".toByteArray())
     var cancellation: Result<CancellationDetails> = Result.success(CancellationDetails("Mittendrin", "Mia Mitglied", "mia@example.test"))
     var withdrawal: Result<WithdrawalDetails> = Result.success(WithdrawalDetails("Mittendrin", "Mia Mitglied", "mia@example.test"))
