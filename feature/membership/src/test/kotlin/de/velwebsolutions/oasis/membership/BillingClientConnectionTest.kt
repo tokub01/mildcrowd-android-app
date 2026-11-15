@@ -123,7 +123,11 @@ class BillingClientConnectionTest {
         assertTrue("Robolectric binds the service, so the client counts as ready", connection.isReady)
     }
 
-    /** Play's client as a script: every call answers right away with [code]. */
+    /**
+     * Play's client as a script: every call answers right away with [code]. BillingClient still declares the deprecated
+     * external-offer methods abstract, so the fake has to implement them.
+     */
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     private class FakeClient(val listener: PurchasesUpdatedListener) : BillingClient() {
         var code = BillingClient.BillingResponseCode.OK
         var details: List<ProductDetails> = emptyList()

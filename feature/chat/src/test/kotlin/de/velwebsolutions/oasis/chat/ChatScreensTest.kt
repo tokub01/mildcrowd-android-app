@@ -54,7 +54,10 @@ import org.robolectric.Shadows
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 class ChatScreensTest {
-    @get:Rule val compose = createComposeRule()
+    // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
+    @Suppress("DEPRECATION")
+    @get:Rule
+    val compose = createComposeRule()
 
     private val support = ChatTestSupport()
     private val passphrase = "Palme Regen Kompass Tee"

@@ -56,6 +56,9 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** One shared parser for the wire fixtures; unknown keys are ignored. */
+private val lenientJson = Json { ignoreUnknownKeys = true }
+
 /**
  * Answers recorded from the local Laravel API (`/api/v1/chat/…`, demo member jonas, 2026-10-22, the same as iOS'
  * ChatDecodingTests) decode into the app models, the recorded envelope/grant pass the crypto core's structural checks,
@@ -350,9 +353,7 @@ class ChatRepositoryTest {
         assertEquals("@mira", ConversationMember("1", "mira").name)
         assertEquals("@mira", ConversationMember("1", "mira", "").name)
         assertEquals("Mira Sol", ConversationMember("1", "mira", "Mira Sol").name)
-        val chat = Json {
-            ignoreUnknownKeys = true
-        }.decodeFromString(ChatConversation.serializer(), CONVERSATION.substringAfter("\"data\":").dropLast(1))
+        val chat = lenientJson.decodeFromString(ChatConversation.serializer(), CONVERSATION.substringAfter("\"data\":").dropLast(1))
         assertEquals("Wandergruppe", chat.copy(title = "Wandergruppe").displayTitle("1"))
         assertEquals("Jonas Weber", chat.copy(title = "").displayTitle("1"))
         assertEquals("Nur du", chat.copy(members = chat.members.take(1)).displayTitle("1"))

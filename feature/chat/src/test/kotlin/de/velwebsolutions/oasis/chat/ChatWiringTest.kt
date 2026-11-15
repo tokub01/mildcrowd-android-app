@@ -55,6 +55,6 @@ class ChatWiringTest {
         session.update(server.me(1))
         idle()
         assertEquals(1, root.me.value?.id)
-        assertTrue(root.prompter is BiometricPrompter)
+        assertTrue(BiometricPrompter::class.java.isInstance(root.prompter))
     }
 }

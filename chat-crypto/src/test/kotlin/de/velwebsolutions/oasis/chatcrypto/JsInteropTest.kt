@@ -11,6 +11,9 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** One shared parser for the fixtures; unknown keys are ignored. */
+private val lenientJson = Json { ignoreUnknownKeys = true }
+
 /**
  * Vectors made by the browser crypto core (Laravel repo: tests/Support/generate-swift-chat-fixture.mjs, the same file
  * the iOS port reads). The Kotlin port must open, verify and decrypt every one of them byte for byte.
@@ -70,7 +73,7 @@ data class JsVectors(
     companion object {
         fun load(): JsVectors {
             val text = checkNotNull(JsVectors::class.java.getResource("/fixtures/js-vectors.json")).readText()
-            return Json { ignoreUnknownKeys = true }.decodeFromString(serializer(), text)
+            return lenientJson.decodeFromString(serializer(), text)
         }
     }
 }

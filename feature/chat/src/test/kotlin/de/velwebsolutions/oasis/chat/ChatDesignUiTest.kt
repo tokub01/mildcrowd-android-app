@@ -65,7 +65,10 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w360dp-h740dp")
 class ChatDesignUiTest {
-    @get:Rule val compose = createComposeRule()
+    // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
+    @Suppress("DEPRECATION")
+    @get:Rule
+    val compose = createComposeRule()
 
     private val calls = mutableListOf<String>()
     private var screen by mutableStateOf<@Composable () -> Unit>({})
@@ -170,7 +173,7 @@ class ChatDesignUiTest {
         onDismissFlagged = {},
         onNoticeSpoken = {},
         attachments = attachmentActions(calls),
-        senderAvatar = { id -> members.first { it.userId == id }.shownAvatar ?: ChatAvatar.Unknown },
+        senderAvatar = { id -> members.first { it.userId == id }.shownAvatar },
         reactions = ReactionActions(
             onReact = { item, emoji -> calls += "react ${item.signature} $emoji" },
             onReply = { calls += "reply ${it.signature}" },

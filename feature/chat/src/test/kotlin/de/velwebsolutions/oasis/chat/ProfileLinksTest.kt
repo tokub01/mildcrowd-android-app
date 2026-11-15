@@ -43,7 +43,10 @@ import org.robolectric.RobolectricTestRunner
 /** Avatars and member rows in the chat open the person's profile (the same on the web and iOS); the „?“ opens nothing. */
 @RunWith(RobolectricTestRunner::class)
 class ProfileLinksTest {
-    @get:Rule val compose = createComposeRule()
+    // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
+    @Suppress("DEPRECATION")
+    @get:Rule
+    val compose = createComposeRule()
 
     private val navigator = Navigator()
     private val top get() = navigator.stack(navigator.selectedTab).lastOrNull()

@@ -61,7 +61,7 @@ class StaffFormatsTest {
     }
 
     @Test
-    fun `the duration of a lock belongs to "Konto gesperrt" only`() {
+    fun `the duration of a lock belongs to „Konto gesperrt“ only`() {
         assertEquals("1 Tag", durationLabel(1))
         assertEquals("7 Tage", durationLabel(7))
         val outcomes = Decoded.complaint.outcomes

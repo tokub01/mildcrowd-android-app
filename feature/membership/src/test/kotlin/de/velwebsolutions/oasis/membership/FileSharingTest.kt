@@ -44,7 +44,7 @@ class FileSharingTest {
     @Test
     fun `the module's own file provider serves the shared files`() {
         val provider = de.velwebsolutions.oasis.membership.ui.MembershipFileProvider()
-        assertTrue(provider is androidx.core.content.FileProvider)
+        assertTrue(androidx.core.content.FileProvider::class.java.isInstance(provider))
     }
 
     @Test

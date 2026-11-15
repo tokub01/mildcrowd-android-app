@@ -56,7 +56,7 @@ class SharingTest {
         val uri = send.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)!!
         assertEquals(uri, send.clipData?.getItemAt(0)?.uri)
         assertTrue(send.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
-        assertTrue(StaffFileProvider() is FileProvider)
+        assertTrue(FileProvider::class.java.isInstance(StaffFileProvider()))
         assertEquals(
             java.io.File(context.cacheDir, "Beweise/oasis-fall-5-beweise.zip"),
             StaffModule.files(context, session).evidenceArchive(5, ByteArray(0))

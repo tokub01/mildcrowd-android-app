@@ -9,6 +9,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
+/** One shared parser for the fixtures; unknown keys are ignored. */
+private val lenientJson = Json { ignoreUnknownKeys = true }
+
 /**
  * Attachment encryption against vectors made by the browser's libsodium (libsodium-wrappers-sumo, the binding of
  * resources/js/chat; fixtures/attachment-vectors.json), and the v2 message plaintext both ways.
@@ -30,7 +33,7 @@ class AttachmentsTest {
 
     private val vectors: List<Vectors.Vector> by lazy {
         val text = checkNotNull(Vectors::class.java.getResource("/fixtures/attachment-vectors.json")).readText()
-        Json { ignoreUnknownKeys = true }.decodeFromString(Vectors.serializer(), text).vectors
+        lenientJson.decodeFromString(Vectors.serializer(), text).vectors
     }
 
     private fun bytes(base64: String) = if (base64.isEmpty()) ByteArray(0) else crypto.fromBase64(base64)

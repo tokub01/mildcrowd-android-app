@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -134,18 +134,18 @@ class PickersTest {
         answer = null
         one!!.pick()
         answer = a
-        one!!.pick()
+        one.pick()
         answer = emptyList<Uri>()
         many!!.pick()
         answer = listOf(a, b, a)
-        many!!.pick()
+        many.pick()
         assertEquals(listOf(listOf(a)), single)
         assertEquals(listOf(listOf(a, b)), several)
 
         answer = false
-        one!!.takePhoto!!()
+        one.takePhoto!!()
         answer = true
-        one!!.takePhoto!!()
+        one.takePhoto!!()
         assertEquals(2, single.size)
         assertTrue(single.last().single().toString().startsWith("content://"))
         // A late answer of the camera without a photo on its way (the app was restarted) is ignored.

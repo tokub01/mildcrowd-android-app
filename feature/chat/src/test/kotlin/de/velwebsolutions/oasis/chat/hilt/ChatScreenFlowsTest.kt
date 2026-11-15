@@ -62,6 +62,8 @@ class ChatScreenFlowsTest {
     @get:Rule(order = 0)
     val hilt = HiltAndroidRule(this)
 
+    // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
+    @Suppress("DEPRECATION")
     @get:Rule(order = 1)
     val compose = createEmptyComposeRule()
 

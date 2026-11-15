@@ -9,6 +9,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
+/** One shared parser for the fixtures; unknown keys are ignored. */
+private val lenientJson = Json { ignoreUnknownKeys = true }
+
 /**
  * Reactions and replies in the message plaintext against the shared vectors (tests/Fixtures/chat-payload-vectors.json,
  * `reactions` and `replies`): built byte for byte like the web, read the same way, anything malformed ignored.
@@ -63,7 +66,7 @@ class ReactionReplyVectorsTest {
 
     private val vectors: Vectors by lazy {
         val text = checkNotNull(Vectors::class.java.getResource("/fixtures/chat-payload-vectors.json")).readText()
-        Json { ignoreUnknownKeys = true }.decodeFromString(Vectors.serializer(), text)
+        lenientJson.decodeFromString(Vectors.serializer(), text)
     }
 
     private val target = "A".repeat(43) + "B".repeat(43)

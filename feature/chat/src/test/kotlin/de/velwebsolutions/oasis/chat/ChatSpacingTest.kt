@@ -80,7 +80,10 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w360dp-h740dp")
 class ChatSpacingTest {
-    @get:Rule val compose = createComposeRule()
+    // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
+    @Suppress("DEPRECATION")
+    @get:Rule
+    val compose = createComposeRule()
 
     @After
     fun light() = Appearance.show(AppearanceChoice.Automatic)
@@ -173,7 +176,7 @@ class ChatSpacingTest {
             onDismissFlagged = {},
             onNoticeSpoken = {},
             attachments = attachmentActions(mutableListOf()),
-            senderAvatar = { id -> members.first { it.userId == id }.shownAvatar ?: ChatAvatar.Unknown }
+            senderAvatar = { id -> members.first { it.userId == id }.shownAvatar }
         )
     }
 

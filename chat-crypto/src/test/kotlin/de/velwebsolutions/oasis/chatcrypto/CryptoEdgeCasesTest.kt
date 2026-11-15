@@ -90,7 +90,7 @@ class CryptoEdgeCasesTest {
         }
         val identity = crypto.createIdentity()
         identity.wipe()
-        assertThrows(ChatCryptoException.InvalidInput::class.java) { identity.withPrivateKeys { _, _ -> Unit } }
+        assertThrows(ChatCryptoException.InvalidInput::class.java) { identity.withPrivateKeys { _, _ -> } }
     }
 
     @Test
