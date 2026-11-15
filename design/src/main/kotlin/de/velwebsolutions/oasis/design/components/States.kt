@@ -25,9 +25,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -214,7 +214,7 @@ fun EmptyStateView(
     title: String,
     modifier: Modifier = Modifier,
     message: String? = null,
-    icon: ImageVector = Icons.Outlined.WaterDrop,
+    icon: ImageVector = Icons.Outlined.Inbox,
     actions: @Composable ColumnScope.() -> Unit = {}
 ) {
     Column(
