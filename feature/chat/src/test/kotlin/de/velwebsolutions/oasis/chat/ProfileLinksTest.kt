@@ -45,7 +45,8 @@ import org.robolectric.RobolectricTestRunner
 class ProfileLinksTest {
     // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
     @Suppress("DEPRECATION")
-    @get:Rule val compose = createComposeRule()
+    @get:Rule
+    val compose = createComposeRule()
 
     private val navigator = Navigator()
     private val top get() = navigator.stack(navigator.selectedTab).lastOrNull()

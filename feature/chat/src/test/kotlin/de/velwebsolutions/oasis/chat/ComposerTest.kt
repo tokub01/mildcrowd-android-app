@@ -42,7 +42,8 @@ import org.robolectric.RobolectricTestRunner
 class ComposerTest {
     // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
     @Suppress("DEPRECATION")
-    @get:Rule val compose = createComposeRule()
+    @get:Rule
+    val compose = createComposeRule()
 
     private val typed = mutableListOf<String>()
     private val conversation = ChatConversation("7", "direct", null, "1", 7, 1, false, emptyList(), "2026-10-22T12:00:00Z")

@@ -85,7 +85,8 @@ import org.robolectric.annotation.GraphicsMode
 class ChatUiTest {
     // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
     @Suppress("DEPRECATION")
-    @get:Rule val compose = createComposeRule()
+    @get:Rule
+    val compose = createComposeRule()
 
     private val calls = mutableListOf<String>()
     private var screen by mutableStateOf<@Composable () -> Unit>({})

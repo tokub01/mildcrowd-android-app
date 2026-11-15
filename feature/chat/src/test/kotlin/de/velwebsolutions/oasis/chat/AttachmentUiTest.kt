@@ -84,7 +84,8 @@ import org.robolectric.annotation.GraphicsMode
 class AttachmentUiTest {
     // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
     @Suppress("DEPRECATION")
-    @get:Rule val compose = createComposeRule()
+    @get:Rule
+    val compose = createComposeRule()
 
     private val calls = mutableListOf<String>()
     private val actions = attachmentActions(calls)

@@ -30,7 +30,8 @@ import org.robolectric.annotation.Config
 class ChatPerformanceTest {
     // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
     @Suppress("DEPRECATION")
-    @get:Rule val compose = createComposeRule()
+    @get:Rule
+    val compose = createComposeRule()
 
     private val members = listOf(ConversationMember("1", "mira", "Mira"), ConversationMember("2", "jonas", "Jonas"))
     private val conversation = ChatConversation("7", "direct", null, "1", 7, 1, false, members, "")
