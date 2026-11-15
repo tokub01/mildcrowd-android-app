@@ -285,7 +285,7 @@ class MembershipViewModelTest {
 
     @Test
     fun `portal downloads the invoice as a file`() = runTest {
-        val html = "<!doctype html><title>Rechnung OAS-2</title>"
+        val html = "<!doctype html><title>Rechnung MC-2</title>"
         val (repository, _) = Fixtures.repository(
             Stub("GET", "membership/payments", json = Fixtures.payments),
             Stub("GET", "membership/invoices/2", json = html)
@@ -299,7 +299,7 @@ class MembershipViewModelTest {
         while (viewModel.state.value.invoiceFile == null && System.currentTimeMillis() < deadline) Thread.sleep(10)
         val file = viewModel.state.value.invoiceFile
         assertNotNull(file)
-        assertEquals("Rechnung-OAS-2.html", file!!.name)
+        assertEquals("Rechnung-MC-2.html", file!!.name)
         assertEquals(html, file.readText())
         assertNull(viewModel.state.value.loadingInvoice)
     }

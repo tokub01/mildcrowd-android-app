@@ -51,7 +51,7 @@ class InvoiceViewModel @AssistedInject constructor(
     suspend fun load() {
         mutableState.update { it.copy(file = Loadable.Loading) }
         try {
-            val file = files.invoice(repository.invoice(paymentId), "OAS-$paymentId").also { written = it }
+            val file = files.invoice(repository.invoice(paymentId), "MC-$paymentId").also { written = it }
             mutableState.update { InvoiceUiState(Loadable.Loaded(file), preview = file) }
         } catch (error: CancellationException) {
             throw error

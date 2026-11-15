@@ -5,7 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Files handed to the invoice view and the share sheet: invoices as `Rechnungen/Rechnung-OAS-<id>.html`, the data
+ * Files handed to the invoice view and the share sheet: invoices as `Rechnungen/Rechnung-MC-<id>.html`, the data
  * export as `Export/oasis-daten.zip`, below the app's cache directory (shared through MembershipFileProvider). They hold
  * personal data (name, address, payments; the whole account), so they are kept only while needed: the screen that wrote
  * one deletes it when it closes ([delete]), and [clear] removes all of them when the membership's files are first used

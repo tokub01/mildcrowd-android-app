@@ -204,8 +204,8 @@ class MembershipUiTest {
             state = MembershipOverview.State.Gift,
             gift = MembershipOverview.Gift("Mittendrin", Instant.parse("2027-01-31T12:00:00Z")),
             purchasedGifts = listOf(
-                MembershipOverview.PurchasedGift(1, "OASIS-GIFT-1", "Mittendrin"),
-                MembershipOverview.PurchasedGift(2, "OASIS-GIFT-2", "Solidar", redeemed = true)
+                MembershipOverview.PurchasedGift(1, "MILD-GIFT-1", "Mittendrin"),
+                MembershipOverview.PurchasedGift(2, "MILD-GIFT-2", "Solidar", redeemed = true)
             )
         )
         overview(gift)
@@ -288,8 +288,8 @@ class MembershipUiTest {
     @Test
     fun `the invoices list, an invoice loading and the way back`() {
         val payments = listOf(
-            MembershipPayment(2, "OAS-2", Instant.parse("2026-10-19T15:39:37Z"), "5 €"),
-            MembershipPayment(3, "OAS-3", Instant.parse("2026-11-19T15:39:37Z"), "5 €", refunded = true)
+            MembershipPayment(2, "MC-2", Instant.parse("2026-10-19T15:39:37Z"), "5 €"),
+            MembershipPayment(3, "MC-3", Instant.parse("2026-11-19T15:39:37Z"), "5 €", refunded = true)
         )
         val opened = mutableListOf<Int>()
         navigator.open(MembershipRoute.Overview)
@@ -318,7 +318,7 @@ class MembershipUiTest {
 
     @Test
     fun `an invoice link shows the invoice, shares and prints it`() {
-        val file = files.invoice("<html><body>Rechnung OAS-2</body></html>".toByteArray(), "OAS-2")
+        val file = files.invoice("<html><body>Rechnung MC-2</body></html>".toByteArray(), "MC-2")
         var shown = 0
         var closed = 0
         show { InvoiceContent(2, InvoiceUiState(Loadable.Loaded(file), preview = file), {}, { shown++ }, { closed++ }) }
@@ -333,10 +333,10 @@ class MembershipUiTest {
 
     @Test
     fun `the invoice page before the sheet opens`() {
-        val file = files.invoice("<html></html>".toByteArray(), "OAS-4")
+        val file = files.invoice("<html></html>".toByteArray(), "MC-4")
         var shown = 0
         show { InvoiceContent(4, InvoiceUiState(Loadable.Loaded(file)), {}, { shown++ }, {}) }
-        compose.onNodeWithText("Rechnung OAS-4").assertIsDisplayed()
+        compose.onNodeWithText("Rechnung MC-4").assertIsDisplayed()
         shot("invoice")
         compose.onNodeWithTag("invoice.view").performClick()
         compose.onNodeWithTag("invoice.pageShare").performClick()
@@ -345,7 +345,7 @@ class MembershipUiTest {
 
     @Test
     fun `a file the app cannot show is offered for sharing`() {
-        val pdf = File(context.cacheDir, "Rechnungen/Rechnung-OAS-5.pdf").apply {
+        val pdf = File(context.cacheDir, "Rechnungen/Rechnung-MC-5.pdf").apply {
             parentFile?.mkdirs()
             writeText("%PDF")
         }

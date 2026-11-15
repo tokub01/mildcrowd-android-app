@@ -55,7 +55,7 @@ object Fixtures {
     """.trimIndent()
 
     val payments = """
-        {"data":[{"id":2,"invoice_number":"OAS-2","kind":"membership","paid_at":"2026-10-19T15:39:37.000000Z","amount":500,"amount_label":"5 €","refunded":false,"invoice_url":"http:\/\/localhost\/api\/v1\/membership\/invoices\/2"}]}
+        {"data":[{"id":2,"invoice_number":"MC-2","kind":"membership","paid_at":"2026-10-19T15:39:37.000000Z","amount":500,"amount_label":"5 €","refunded":false,"invoice_url":"http:\/\/localhost\/api\/v1\/membership\/invoices\/2"}]}
     """.trimIndent()
 
     val cancellation = """

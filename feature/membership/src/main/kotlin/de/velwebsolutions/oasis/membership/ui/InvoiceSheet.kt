@@ -23,7 +23,7 @@ import de.velwebsolutions.oasis.design.components.OasisScreen
 import de.velwebsolutions.oasis.design.components.ScreenChrome
 import java.io.File
 
-/** "Rechnung OAS-2" from `Rechnung-OAS-2.html`. */
+/** "Rechnung MC-2" from `Rechnung-MC-2.html`. */
 fun invoiceTitle(file: File): String = file.nameWithoutExtension.replace("Rechnung-", "Rechnung ")
 
 /**

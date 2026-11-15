@@ -76,7 +76,7 @@ class MembershipRepositoryTest {
             Stub("GET", "membership/cancellation", json = Fixtures.cancellation)
         )
         val payment = repository.payments().first()
-        assertEquals("OAS-2", payment.invoiceNumber)
+        assertEquals("MC-2", payment.invoiceNumber)
         assertEquals("5 €", payment.amountLabel)
         assertEquals("19.10.2026", MembershipFormat.day(payment.paidAt))
         val details = repository.cancellation()
@@ -120,7 +120,7 @@ class MembershipRepositoryTest {
 
     @Test
     fun `downloads the invoice and the export as files`() = runTest {
-        val html = "<!doctype html><title>Rechnung OAS-2</title>"
+        val html = "<!doctype html><title>Rechnung MC-2</title>"
         val (repository, transport) = Fixtures.repository(
             Stub("GET", "membership/invoices/2", json = html),
             Stub("GET", "account/export", json = "PK")

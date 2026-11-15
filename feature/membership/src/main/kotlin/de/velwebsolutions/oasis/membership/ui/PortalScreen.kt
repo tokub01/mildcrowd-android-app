@@ -158,7 +158,7 @@ fun InvoiceContent(paymentId: Int, state: InvoiceUiState, onRetry: suspend () ->
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(Icons.Outlined.Description, contentDescription = null, tint = OasisColors.Spring, modifier = Modifier.size(40.dp))
-                Text("Rechnung OAS-$paymentId", style = OasisType.heading(), color = OasisColors.Night)
+                Text("Rechnung MC-$paymentId", style = OasisType.heading(), color = OasisColors.Night)
                 OasisButton("Rechnung ansehen", onShow, Modifier.testTag("invoice.view"), fullWidth = false)
                 OasisButton(
                     "Teilen",
