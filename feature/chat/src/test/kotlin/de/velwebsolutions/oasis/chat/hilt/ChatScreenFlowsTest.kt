@@ -10,7 +10,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -62,6 +62,8 @@ class ChatScreenFlowsTest {
     @get:Rule(order = 0)
     val hilt = HiltAndroidRule(this)
 
+    // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
+    @Suppress("DEPRECATION")
     @get:Rule(order = 1)
     val compose = createEmptyComposeRule()
 

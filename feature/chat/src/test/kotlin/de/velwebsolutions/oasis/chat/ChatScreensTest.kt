@@ -12,7 +12,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -54,6 +54,8 @@ import org.robolectric.Shadows
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 class ChatScreensTest {
+    // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
+    @Suppress("DEPRECATION")
     @get:Rule val compose = createComposeRule()
 
     private val support = ChatTestSupport()

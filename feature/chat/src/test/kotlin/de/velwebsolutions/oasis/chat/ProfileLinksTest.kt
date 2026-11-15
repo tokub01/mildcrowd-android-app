@@ -7,7 +7,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -43,6 +43,8 @@ import org.robolectric.RobolectricTestRunner
 /** Avatars and member rows in the chat open the person's profile (the same on the web and iOS); the „?“ opens nothing. */
 @RunWith(RobolectricTestRunner::class)
 class ProfileLinksTest {
+    // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
+    @Suppress("DEPRECATION")
     @get:Rule val compose = createComposeRule()
 
     private val navigator = Navigator()

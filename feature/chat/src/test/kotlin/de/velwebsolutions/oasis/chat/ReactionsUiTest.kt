@@ -11,7 +11,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -52,6 +52,8 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w360dp-h740dp")
 class ReactionsUiTest {
+    // The chat screens keep the first test rule: their effects (scrolling to „Neue Nachrichten“) run as in the app.
+    @Suppress("DEPRECATION")
     @get:Rule val compose = createComposeRule()
 
     private val calls = mutableListOf<String>()
