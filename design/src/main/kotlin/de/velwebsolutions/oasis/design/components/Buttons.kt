@@ -90,7 +90,13 @@ fun OasisButton(
             .pressEffect(interaction)
             .alpha(if (enabled) 1f else 0.45f)
             // The accent button (the web's `o-btn-primary`) carries a light shadow in its own colour.
-            .shadow(if (kind == OasisButtonKind.Accent) 8.dp else 0.dp, PillShape, clip = false, ambientColor = OasisColors.Sun, spotColor = OasisColors.Sun)
+            .shadow(
+                elevation = if (kind == OasisButtonKind.Accent) 8.dp else 0.dp,
+                shape = PillShape,
+                clip = false,
+                ambientColor = OasisColors.Sun,
+                spotColor = OasisColors.Sun
+            )
             .clip(PillShape)
             .background(kind.background(), PillShape)
             .then(if (border != null) Modifier.border(border, PillShape) else Modifier)
