@@ -14,6 +14,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -23,13 +25,17 @@ import de.velwebsolutions.oasis.design.theme.OasisColors
 import de.velwebsolutions.oasis.design.theme.OasisRadius
 import de.velwebsolutions.oasis.design.theme.OasisType
 
-/** A paper card with the web's border and radius. */
+/** The shadow under paper cards (the web's `--shadow-soft`); on the dark ground it does not show. */
+private val CardShadow = Color(0xFF171A2E)
+
+/** A paper card with the web's border and radius, resting slightly above the ground. */
 @Composable
 fun OasisCard(modifier: Modifier = Modifier, padding: Int = 16, content: @Composable ColumnScope.() -> Unit) {
     val shape = RoundedCornerShape(OasisRadius.S.dp)
     Column(
         modifier
             .fillMaxWidth()
+            .shadow(6.dp, shape, clip = false, ambientColor = CardShadow, spotColor = CardShadow)
             .background(OasisColors.Paper, shape)
             .border(1.dp, OasisColors.PaperLine, shape)
             .padding(padding.dp),
@@ -42,7 +48,7 @@ fun OasisCard(modifier: Modifier = Modifier, padding: Int = 16, content: @Compos
 fun Eyebrow(text: String, modifier: Modifier = Modifier, onNight: Boolean = false) {
     Text(
         text.uppercase(),
-        style = OasisType.Eyebrow.copy(letterSpacing = 0.18.em),
+        style = OasisType.Eyebrow.copy(letterSpacing = 0.14.em),
         color = if (onNight) OasisColors.SunOnNight else OasisColors.SunText,
         modifier = modifier
     )

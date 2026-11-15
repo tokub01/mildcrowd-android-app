@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
@@ -88,6 +89,8 @@ fun OasisButton(
             .defaultMinSize(minHeight = 48.dp)
             .pressEffect(interaction)
             .alpha(if (enabled) 1f else 0.45f)
+            // The accent button (the web's `o-btn-primary`) carries a light shadow in its own colour.
+            .shadow(if (kind == OasisButtonKind.Accent) 8.dp else 0.dp, PillShape, clip = false, ambientColor = OasisColors.Sun, spotColor = OasisColors.Sun)
             .clip(PillShape)
             .background(kind.background(), PillShape)
             .then(if (border != null) Modifier.border(border, PillShape) else Modifier)
