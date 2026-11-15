@@ -36,15 +36,15 @@ class ModelConstructionTest {
 
     /** A plain value of [type]; models are built from their primary constructor. */
     private fun value(type: Class<*>): Any? = when {
-        type == Int::class.javaPrimitiveType || type == Integer::class.java -> 1
-        type == Boolean::class.javaPrimitiveType || type == java.lang.Boolean::class.java -> true
-        type == Long::class.javaPrimitiveType || type == java.lang.Long::class.java -> 1L
+        type == Int::class.javaPrimitiveType || type == Int::class.javaObjectType -> 1
+        type == Boolean::class.javaPrimitiveType || type == Boolean::class.javaObjectType -> true
+        type == Long::class.javaPrimitiveType || type == Long::class.javaObjectType -> 1L
         type == String::class.java -> "x"
         type == Instant::class.java -> Instant.EPOCH
         List::class.java.isAssignableFrom(type) -> emptyList<Any>()
         Map::class.java.isAssignableFrom(type) -> emptyMap<Any, Any>()
         type == Page.Meta::class.java -> Page.Meta()
-        type.isEnum -> type.enumConstants.first()
+        type.isEnum -> type.enumConstants!!.first()
         else -> build(type)
     }
 

@@ -31,6 +31,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/** Writes default values too, to check what a server that sends them looks like. */
+private val jsonWithDefaults = Json { encodeDefaults = true }
+
 /** Plays the Reverb server: frames the client sends are recorded, frames the test pushes are received by the client. */
 class FakeWebSocket(val url: String) : WebSocketConnection {
     private val inbox = Channel<String>(Channel.UNLIMITED)
@@ -724,7 +727,7 @@ class ReverbRealtimeTest {
         assertEquals(AppConfigAnswer(null), json.decodeFromString<AppConfigAnswer>("{}"))
         assertEquals("{}", json.encodeToString(AppConfigAnswer(null)))
         assertEquals(AppConfigAnswer(null), json.decodeFromString<AppConfigAnswer>("""{"reverb":null}"""))
-        assertEquals("""{"reverb":null}""", Json { encodeDefaults = true }.encodeToString(AppConfigAnswer(null)))
+        assertEquals("""{"reverb":null}""", jsonWithDefaults.encodeToString(AppConfigAnswer(null)))
         assertEquals(AppConfigAnswer(settings), json.decodeFromString<AppConfigAnswer>(json.encodeToString(AppConfigAnswer(settings))))
         val body = BroadcastAuthBody("1.2", "private-inbox.5")
         assertEquals(body, json.decodeFromString<BroadcastAuthBody>(json.encodeToString(body)))

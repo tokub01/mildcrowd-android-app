@@ -11,7 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.isRoot
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
@@ -173,7 +173,7 @@ class ChatSpacingTest {
             onDismissFlagged = {},
             onNoticeSpoken = {},
             attachments = attachmentActions(mutableListOf()),
-            senderAvatar = { id -> members.first { it.userId == id }.shownAvatar ?: ChatAvatar.Unknown }
+            senderAvatar = { id -> members.first { it.userId == id }.shownAvatar }
         )
     }
 

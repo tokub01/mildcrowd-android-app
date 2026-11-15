@@ -14,6 +14,8 @@ class OasisMessagingService : Hilt_OasisMessagingService() {
     /** Shows pushes and registers new tokens. */
     @set:Inject lateinit var messages: PushMessages
 
+    // Firebase still calls onNewToken for every new token; the deprecation is on the Hilt base, not on FCM.
+    @Suppress("OVERRIDE_DEPRECATION")
     override fun onNewToken(token: String) = messages.tokenChanged()
 
     override fun onMessageReceived(message: RemoteMessage) = messages.received(message)

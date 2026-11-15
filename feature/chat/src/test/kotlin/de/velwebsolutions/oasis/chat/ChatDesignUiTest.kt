@@ -16,7 +16,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isRoot
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -170,7 +170,7 @@ class ChatDesignUiTest {
         onDismissFlagged = {},
         onNoticeSpoken = {},
         attachments = attachmentActions(calls),
-        senderAvatar = { id -> members.first { it.userId == id }.shownAvatar ?: ChatAvatar.Unknown },
+        senderAvatar = { id -> members.first { it.userId == id }.shownAvatar },
         reactions = ReactionActions(
             onReact = { item, emoji -> calls += "react ${item.signature} $emoji" },
             onReply = { calls += "reply ${it.signature}" },

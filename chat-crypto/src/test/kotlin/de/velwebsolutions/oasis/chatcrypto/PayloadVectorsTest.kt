@@ -7,6 +7,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
+/** One shared parser for the fixtures; unknown keys are ignored. */
+private val lenientJson = Json { ignoreUnknownKeys = true }
+
 /**
  * The send effect in the message plaintext against the shared vectors (tests/Fixtures/chat-payload-vectors.json of the
  * Laravel project): Android builds every plaintext byte for byte like the web and reads every one the same way.
@@ -23,7 +26,7 @@ class PayloadVectorsTest {
 
     private val vectors: Vectors by lazy {
         val text = checkNotNull(Vectors::class.java.getResource("/fixtures/chat-payload-vectors.json")).readText()
-        Json { ignoreUnknownKeys = true }.decodeFromString(Vectors.serializer(), text)
+        lenientJson.decodeFromString(Vectors.serializer(), text)
     }
 
     @Test

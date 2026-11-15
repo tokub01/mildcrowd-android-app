@@ -17,7 +17,7 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isToggleable
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -252,7 +252,7 @@ class ModerationUiTest {
         val chat = Decoded.caseChat
         val loaded = mutableListOf<Int>()
         var state by mutableStateOf(CaseDetailUiState(Loadable.Loaded(chat)))
-        val nameless = chat.report!!.attachments.last().copy(name = null)
+        val nameless = chat.report.attachments.last().copy(name = null)
         var alone by mutableStateOf(false)
         ui.show {
             if (alone) {
@@ -287,7 +287,7 @@ class ModerationUiTest {
     @OptIn(ExperimentalCoilApi::class)
     @Test
     fun `a reported photo is never written to the image loader's disk cache`() {
-        val photo = Decoded.caseChat.report!!.attachments.first()
+        val photo = Decoded.caseChat.report.attachments.first()
         val requests = mutableListOf<ImageRequest>()
         // In inspection mode Coil hands each request to the preview handler instead of loading it.
         ui.show {

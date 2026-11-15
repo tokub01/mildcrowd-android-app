@@ -149,6 +149,7 @@ class BillingClientConnectionTest {
         override fun getConnectionState() = 2
         override fun isFeatureSupported(feature: String) = result()
         override fun showAlternativeBillingOnlyInformationDialog(a: Activity, l: AlternativeBillingOnlyInformationDialogListener) = result()
+        @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION") // still abstract in BillingClient, so the fake must implement it
         override fun showExternalOfferInformationDialog(a: Activity, l: ExternalOfferInformationDialogListener) = result()
         override fun showInAppMessages(a: Activity, p: InAppMessageParams, l: InAppMessageResponseListener) = result()
         override fun consumeAsync(p: ConsumeParams, l: ConsumeResponseListener) = Unit
@@ -157,12 +158,14 @@ class BillingClientConnectionTest {
             p: BillingProgramReportingDetailsParams,
             l: BillingProgramReportingDetailsListener
         ) = Unit
+        @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION") // still abstract in BillingClient, so the fake must implement it
         override fun createExternalOfferReportingDetailsAsync(l: ExternalOfferReportingDetailsListener) = Unit
         override fun endConnection() = Unit
         override fun getBillingChoiceInfoAsync(p: GetBillingChoiceInfoParams, l: BillingChoiceInfoResponseListener) = Unit
         override fun getBillingConfigAsync(p: GetBillingConfigParams, l: BillingConfigResponseListener) = Unit
         override fun isAlternativeBillingOnlyAvailableAsync(l: AlternativeBillingOnlyAvailabilityListener) = Unit
         override fun isBillingProgramAvailableAsync(program: Int, l: BillingProgramAvailabilityListener) = Unit
+        @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION") // still abstract in BillingClient, so the fake must implement it
         override fun isExternalOfferAvailableAsync(l: ExternalOfferAvailabilityListener) = Unit
         override fun launchExternalLink(a: Activity, p: LaunchExternalLinkParams, l: LaunchExternalLinkResponseListener) = Unit
         override fun showBillingProgramInformationDialog(

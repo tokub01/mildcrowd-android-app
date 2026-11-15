@@ -86,7 +86,7 @@ internal fun PostPollView(post: Post, poll: Post.Poll) {
                     option,
                     style = OasisType.Body.copy(fontWeight = if (mine) FontWeight.Bold else FontWeight.Normal),
                     color = OasisColors.Ink,
-                    modifier = (if (voting && actions != null) answer.pressable({ actions.vote(post, index) }) else answer)
+                    modifier = (if (voting) answer.pressable({ actions.vote(post, index) }) else answer)
                         .semantics { selected = mine }
                         .padding(horizontal = 12.dp, vertical = 11.dp)
                         .testTag("post.poll.answer.$index")
