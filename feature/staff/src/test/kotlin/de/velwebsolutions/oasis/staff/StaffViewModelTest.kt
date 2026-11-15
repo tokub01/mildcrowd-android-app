@@ -26,6 +26,7 @@ import de.velwebsolutions.oasis.testing.StubTransport.Stub
 import java.nio.file.Files
 import java.time.Instant
 import kotlin.reflect.KClass
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
@@ -310,6 +311,8 @@ class StaffViewModelTest {
     fun `dashboard asks for period and month`() = runTest {
         val (repository, transport) = Fixtures.repository(Stub("GET", "staff/admin/dashboard", json = Fixtures.dashboard))
         val viewModel = AdminDashboardViewModel(repository)
+        // The first load starts on its own; wait for it, so its 30-day request cannot land after the 7-day one.
+        viewModel.state.first { it.dashboard.valueOrNull != null }
         viewModel.selectDays(7)
         assertEquals("7", transport.lastQuery()["tage"])
         viewModel.showMonth("2026-09")

@@ -379,6 +379,8 @@ class ScreenFlowsTest {
         navigator.present(NetworkRoute.Compose(oasisSlug = "sheet-test"))
         show(ScreenChrome(onClose = { navigator.dismissSheet() })) { ComposeScreen("sheet-test", null, model) }
         text("Post schreiben").assertIsDisplayed()
+        // The composer loads its options first; the text field appears once they are there.
+        compose.waitUntil(5_000) { compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
         compose.onNode(hasSetTextAction()).performTextInput("Entwurf")
         compose.waitForIdle()
         compose.onNodeWithTag("compose.close").performClick()
