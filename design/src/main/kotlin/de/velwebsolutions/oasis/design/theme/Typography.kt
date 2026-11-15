@@ -72,7 +72,7 @@ object OasisType {
     val Caption = TextStyle(fontFamily = Manrope, fontSize = 13.sp, lineHeight = 18.sp)
 
     /** Small uppercase labels above sections (`--fs-eyebrow`). */
-    val Eyebrow = TextStyle(fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 0.18.em)
+    val Eyebrow = TextStyle(fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 0.14.em)
 
     /** Buttons. */
     val Button = TextStyle(fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.sp)
