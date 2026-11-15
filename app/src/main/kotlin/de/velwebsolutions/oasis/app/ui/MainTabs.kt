@@ -25,8 +25,8 @@ import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenu
@@ -88,7 +88,7 @@ import de.velwebsolutions.oasis.design.theme.OasisType
 
 private val MainTab.icon: ImageVector
     get() = when (this) {
-        MainTab.Source -> Icons.Outlined.WaterDrop
+        MainTab.Source -> Icons.Outlined.Home
         MainTab.Discover -> Icons.Outlined.Explore
         MainTab.Oases -> Icons.Outlined.Groups
         MainTab.Chats -> Icons.Outlined.Forum
