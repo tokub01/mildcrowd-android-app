@@ -8,7 +8,7 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
@@ -41,6 +41,11 @@ abstract class HiltScreenTest {
     @get:Rule(order = 0)
     val hilt = HiltAndroidRule(this)
 
+    /**
+     * Stays on the first rule: its dispatcher lets the Session finish sign-in work while a test waits
+     * (ConfirmPhoneHiltTest); the v2 rule holds that work back until the composition is idle.
+     */
+    @Suppress("DEPRECATION")
     @get:Rule(order = 1)
     val compose = createEmptyComposeRule()
 
