@@ -1,0 +1,244 @@
+package de.velwebsolutions.mildcrowd.staff.api
+
+import de.velwebsolutions.mildcrowd.core.network.MildcrowdInstant
+import de.velwebsolutions.mildcrowd.core.network.Page
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.Serializable
+
+/** One figure of the admin statistics, already formatted like the web tile ("5 €", "–", "12"). */
+@Serializable
+data class StatTile(val value: String, val label: String)
+
+/** `GET staff/admin/dashboard` – admin statistics. Sums only, never people or content. */
+@Serializable
+data class AdminDashboard(
+    val days: Int,
+    val periods: List<Int> = emptyList(),
+    val revenue: Revenue,
+    val ai: Ai,
+    val members: Members,
+    val network: Network,
+    val referrals: Section,
+    val chat: Section,
+    val moderation: Section
+) {
+    /** The revenue card of a month. */
+    @Serializable
+    data class Revenue(
+        val previousMonth: String,
+        /** Null on the current month; "" means "back to the current month". */
+        val nextMonth: String? = null,
+        val title: String,
+        val period: String,
+        val amount: String,
+        val payments: String,
+        val fees: String,
+        val comparison: String
+    )
+
+    /** A section of statistic tiles. */
+    @Serializable
+    data class Section(val tiles: List<StatTile> = emptyList())
+
+    /** The AI check's figures and note. */
+    @Serializable
+    data class Ai(val tiles: List<StatTile> = emptyList(), val note: String? = null)
+
+    /** Members per tier. */
+    @Serializable
+    data class TierCount(val name: String, val count: Int)
+
+    /** Member figures and members per tier. */
+    @Serializable
+    data class Members(val tiles: List<StatTile> = emptyList(), val byTier: List<TierCount> = emptyList())
+
+    /** New accounts and Posts of one week. */
+    @Serializable
+    data class Week(val week: MildcrowdInstant, val registered: Int, val posts: Int)
+
+    /** Network figures and the last weeks. */
+    @Serializable
+    data class Network(val tiles: List<StatTile> = emptyList(), val weeks: List<Week> = emptyList())
+}
+
+/** A member's idea as admins see it (the member API `GET ideas`, docs/mildcrowd-admin.md „Ideen für Mildcrowd“). */
+@Serializable
+data class AdminIdea(
+    val id: Int,
+    val title: String,
+    val description: String? = null,
+    /** `open`, `planned`, `in_progress`, `done` or `declined`. */
+    val status: String = "open",
+    val statusLabel: String = "Offen",
+    val statusReply: String? = null,
+    val votes: Int = 0,
+    val author: Author? = null
+) {
+    @Serializable
+    data class Author(val displayName: String)
+
+    companion object {
+        /** The statuses with the web's labels (`Idea::STATUSES`). */
+        val statuses = listOf(
+            Labelled("open", "Offen"),
+            Labelled("planned", "Geplant"),
+            Labelled("in_progress", "In Arbeit"),
+            Labelled("done", "Umgesetzt"),
+            Labelled("declined", "Abgelehnt")
+        )
+    }
+}
+
+/** „Stand setzen“: status and an optional reply (≤ 1000). */
+@Serializable
+data class IdeaStatusInput(val status: String, val reply: String = "")
+
+/** A local payment record (`GET staff/admin/payments`). */
+@Serializable
+data class PaymentRecord(
+    val id: Int,
+    val kind: String,
+    val amount: String,
+    val customerName: String? = null,
+    val customerEmail: String? = null,
+    val accountDeleted: Boolean = false,
+    val statusLabel: String,
+    val refunded: Boolean = false,
+    val tier: String,
+    val rhythm: String,
+    val createdAt: MildcrowdInstant,
+    val paidAt: MildcrowdInstant? = null,
+    val molliePaymentId: String? = null,
+    val mollieCustomerId: String? = null,
+    val canSync: Boolean = false,
+    val canRefund: Boolean = false,
+    val refundable: String,
+    val refundDefault: String,
+    val refunds: List<Refund> = emptyList()
+) {
+    /** A refund of the record. */
+    @Serializable
+    data class Refund(
+        val amount: String,
+        val createdAt: MildcrowdInstant,
+        val adminName: String? = null,
+        val reason: String,
+        val mollieRefundId: String? = null
+    )
+}
+
+/** A page of payment records plus the filter data. */
+@Serializable
+data class PaymentPage(val data: List<PaymentRecord>, val meta: Page.Meta? = null, val filters: Filters) {
+    val page: Page<PaymentRecord> get() = Page(data, meta)
+
+    /** The filters the search offers. */
+    @Serializable
+    data class Filters(val statuses: List<Labelled> = emptyList(), val mollieId: Boolean = false, val retentionYears: Int? = null)
+}
+
+/** A payment as Mollie knows it (read only). */
+@Serializable
+data class MolliePayment(
+    val id: String,
+    val status: String,
+    val amount: String? = null,
+    val refunded: String? = null,
+    val method: String? = null,
+    val description: String? = null,
+    val created: String? = null,
+    val paid: String? = null,
+    val customer: String? = null,
+    val subscription: String? = null,
+    val dashboard: String? = null
+)
+
+/** A customer as Mollie knows it. */
+@Serializable
+data class MollieCustomer(
+    val id: String,
+    val name: String? = null,
+    val email: String? = null,
+    val created: String? = null,
+    val dashboard: String? = null
+)
+
+/** Result of a Mollie lookup: the data, or the German reason why there is none. */
+@Serializable
+data class MollieLookup(val mollie: Data? = null, val error: String? = null) {
+    /** What Mollie answered. */
+    @Serializable
+    data class Data(
+        /** payment | customer */
+        val kind: String,
+        val payment: MolliePayment? = null,
+        val customer: MollieCustomer? = null,
+        val payments: List<MolliePayment>? = null
+    )
+}
+
+/** A data breach in the register. */
+@Serializable
+data class DataBreach(
+    val id: Int,
+    val title: String,
+    val discoveredAt: MildcrowdInstant,
+    val riskLabel: String,
+    val closedAt: MildcrowdInstant? = null,
+    val reportDueAt: MildcrowdInstant,
+    val reportOutstanding: Boolean = false,
+    val hoursLeft: Int = 0,
+    val mustReport: Boolean = false,
+    val mustNotifyPeople: Boolean = false,
+    val reportText: String? = null,
+    val authorityReportedAt: MildcrowdInstant? = null,
+    val authorityReference: String? = null,
+    val peopleNotifiedAt: MildcrowdInstant? = null,
+    val canRecordReport: Boolean = false,
+    val canRecordNotified: Boolean = false,
+    val log: List<LogEntry> = emptyList()
+) {
+    /** One entry of the breach's log. */
+    @Serializable
+    data class LogEntry(val at: MildcrowdInstant, val by: String, val text: String)
+}
+
+/** `GET staff/admin/breaches`. */
+@Serializable
+data class BreachRegister(val data: List<DataBreach> = emptyList(), val risks: List<Labelled> = emptyList(), val authority: String? = null)
+
+/** A new data breach as the form sends it (discovery as the web's `datetime-local` value; every
+ * field is sent, also when empty or untouched). */
+@Serializable
+data class NewBreach(
+    @EncodeDefault val title: String = "",
+    @EncodeDefault val discoveredAt: String = "",
+    @EncodeDefault val description: String = "",
+    @EncodeDefault val dataCategories: String = "",
+    @EncodeDefault val affectedPeople: String = "",
+    @EncodeDefault val risk: String = "risk",
+    @EncodeDefault val consequences: String = "",
+    @EncodeDefault val measures: String = ""
+)
+
+/** `GET staff/admin/system`. */
+@Serializable
+data class SystemStatus(
+    val healthy: Boolean,
+    val checks: List<Check> = emptyList(),
+    val backups: List<String> = emptyList(),
+    val botRefusals: List<BotRefusal> = emptyList(),
+    val heartbeats: List<Heartbeat> = emptyList()
+) {
+    /** One health check. */
+    @Serializable
+    data class Check(val key: String, val label: String, val ok: Boolean, val detail: String)
+
+    /** Refused bot attempts of one kind today. */
+    @Serializable
+    data class BotRefusal(val label: String, val count: Int)
+
+    /** The last runs of a scheduled job. */
+    @Serializable
+    data class Heartbeat(val key: String, val lastSuccessAt: MildcrowdInstant? = null, val lastFailureAt: MildcrowdInstant? = null)
+}

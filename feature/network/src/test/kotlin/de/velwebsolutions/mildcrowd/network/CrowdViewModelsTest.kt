@@ -1,0 +1,407 @@
+package de.velwebsolutions.mildcrowd.network
+
+import de.velwebsolutions.mildcrowd.core.model.Loadable
+import de.velwebsolutions.mildcrowd.network.api.FeedPage
+import de.velwebsolutions.mildcrowd.network.api.ImageUpload
+import de.velwebsolutions.mildcrowd.network.api.NoContext
+import de.velwebsolutions.mildcrowd.network.data.NetworkRepository
+import de.velwebsolutions.mildcrowd.network.ui.crowds.CloseCrowdViewModel
+import de.velwebsolutions.mildcrowd.network.ui.crowds.CrowdFormOutcome
+import de.velwebsolutions.mildcrowd.network.ui.crowds.CrowdFormViewModel
+import de.velwebsolutions.mildcrowd.network.ui.crowds.CrowdStatisticsViewModel
+import de.velwebsolutions.mildcrowd.network.ui.crowds.CrowdViewModel
+import de.velwebsolutions.mildcrowd.network.ui.crowds.CrowdsViewModel
+import de.velwebsolutions.mildcrowd.testing.MainDispatcherRule
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+
+/** The crowd screens' view models: overview, one crowd, the form with banner and roles, closing and statistics. */
+@RunWith(Parameterized::class)
+class CrowdViewModelsTest(private val answersAtOnce: Boolean) {
+    companion object {
+        /** Each test runs with answers that suspend and with answers on the calling thread. */
+        @JvmStatic
+        @Parameterized.Parameters(name = "immediate={0}")
+        fun modes() = listOf(false, true)
+    }
+
+    @Before
+    fun answerMode() {
+        immediate = answersAtOnce
+    }
+
+    @After
+    fun suspendingAgain() {
+        immediate = false
+    }
+
+    @get:Rule
+    val main = MainDispatcherRule()
+
+    private val models = ViewModelKeeper()
+
+    @After
+    fun clear() {
+        models.clear()
+        NetworkSignals.confirmation.value = null
+    }
+
+    private val summary =
+        """{"id": 2, "slug": "stadtgarten", "name": "Stadtgarten", "description": "Gärtnern.", "color": "spring", "visibility": "public",
+        |"banner_url": null, "members_count": 4, "role": "host"}
+        """.trimMargin()
+
+    private fun detail(member: Boolean) =
+        """{"data": {"crowd": $summary, "url": "http://localhost/crowds/stadtgarten", "house_rules": [], "hosts": [],
+        |"is_member": $member, "is_host": $member, "can_follow": true, "can_post": $member}}
+        """.trimMargin()
+
+    private val editForm =
+        """{"data": {"crowd": $summary, "house_rules": "Freundlich bleiben.", "members": [{"id": 1, "username": "mira",
+        |"display_name": "Mira Sol", "role": "host", "role_label": "Gastgeber:in"}, {"id": 3, "username": "aylin",
+        |"display_name": "Aylin Demir", "role": "member", "role_label": "Mitglied"}], "options": {"visibilities":
+        |[{"value": "public", "label": "Alle"}, {"value": "members", "label": "Nur Mitglieder"}], "colors": [{"value": "spring",
+        |"label": "Pfirsich"}]}}}
+        """.trimMargin()
+
+    private val banner = ImageUpload(byteArrayOf(1, 2, 3), "banner.jpg", "image/jpeg")
+
+    @Test
+    fun `the overview loads once and again when a crowd changed`() = runTest {
+        val network = StubbedNetwork(stub("GET", "network/crowds", Fixtures.crowds))
+        val model = models.keep(CrowdsViewModel(network.repository))
+        model.loadIfNeeded()
+        model.loadIfNeeded()
+        assertEquals(1, network.transport.requests.size)
+        assertNotNull(model.directory.value.valueOrNull)
+
+        NetworkSignals.didChangeCrowds()
+        eventually { network.transport.requests.size == 2 }
+    }
+
+    @Test
+    fun `the overview shows a failed first load and keeps the list when a refresh fails`() = runTest {
+        val network = StubbedNetwork(stub("GET", "network/crowds", """{"message":"Kaputt."}""", 500))
+        val model = models.keep(CrowdsViewModel(network.repository))
+        model.load()
+        assertTrue(model.directory.value is Loadable.Failed)
+
+        network.add("GET", "network/crowds", json = Fixtures.crowds)
+        model.load()
+        network.add("GET", "network/crowds", status = 500, json = """{"message":"Kaputt."}""")
+        model.load()
+        assertNotNull(model.directory.value.valueOrNull)
+        assertEquals("Kaputt.", model.error.value?.userMessage)
+        model.dismissError()
+        assertNull(model.error.value)
+    }
+
+    @Test
+    fun `a non-member sees no member list, follows and reloads`() = runTest {
+        val network = StubbedNetwork(
+            stub("GET", "network/crowds/stadtgarten", detail(member = false)),
+            stub("GET", "network/crowds/stadtgarten/posts", pageJson(postJson(4))),
+            stub("POST", "network/crowds/stadtgarten/follow", """{"message":"Du folgst jetzt der Crowd Stadtgarten."}"""),
+            stub("GET", "network/crowds/stadtgarten/collections", """{"data":{"can_create":false,"collections":[]}}""")
+        )
+        val model = models.keep(CrowdViewModel("stadtgarten", network.repository))
+        model.loadIfNeeded()
+        model.loadIfNeeded()
+        assertNull(model.members.value)
+        assertEquals("the page, its Tropfen and its Sammlungen, once", 3, network.transport.requests.size)
+
+        model.setFollowing(true)
+        assertEquals("Du folgst jetzt der Crowd Stadtgarten.", model.status.value)
+        model.dismissStatus()
+        assertNull(model.status.value)
+    }
+
+    @Test
+    fun `the last host cannot leave, and the member list stays empty when it cannot load`() = runTest {
+        val network = StubbedNetwork(
+            stub("GET", "network/crowds/stadtgarten", detail(member = true)),
+            stub("GET", "network/crowds/stadtgarten/posts", pageJson()),
+            stub("GET", "network/crowds/stadtgarten/members", """{"message":"Kaputt."}""", 500),
+            stub("DELETE", "network/crowds/stadtgarten/follow", """{"message":"Du bist die letzte Gastgeberin."}""", 422)
+        )
+        val model = models.keep(CrowdViewModel("stadtgarten", network.repository))
+        model.load()
+        assertNull(model.members.value)
+
+        val loads = network.transport.requests.size
+        model.setFollowing(false)
+        assertEquals("Du bist die letzte Gastgeberin.", model.error.value?.userMessage)
+        assertEquals(loads + 1, network.transport.requests.size)
+
+        model.updateMemberQuery("a".repeat(80))
+        model.loadMembers()
+        assertEquals("a".repeat(60), network.last("network/crowds/stadtgarten/members").request.url.queryParameter("q"))
+    }
+
+    @Test
+    fun `a published Post reloads the crowd's Posts`() = runTest {
+        val network = StubbedNetwork(
+            stub("GET", "network/crowds/stadtgarten", detail(member = false)),
+            stub("GET", "network/crowds/stadtgarten/posts", pageJson(postJson(4)))
+        )
+        val model = models.keep(CrowdViewModel("stadtgarten", network.repository))
+        model.load()
+        network.add("GET", "network/crowds/stadtgarten/posts", json = pageJson(postJson(5), postJson(4)))
+        NetworkSignals.didPublish(null, "Gespeichert.")
+        eventually { model.posts.posts.size == 2 }
+    }
+
+    @Test
+    fun `editing fills the form, saves and goes back`() = runTest {
+        val network = StubbedNetwork(
+            stub("GET", "network/crowds/stadtgarten/edit", editForm),
+            stub("PUT", "network/crowds/stadtgarten", """{"message":"Gespeichert.","data":{"slug":"stadtgarten"}}""")
+        )
+        val model = models.keep(CrowdFormViewModel("stadtgarten", network.repository))
+        assertTrue(model.editing)
+        model.loadIfNeeded()
+        model.loadIfNeeded()
+        assertEquals(1, network.transport.requests.size)
+        assertEquals("Freundlich bleiben.", model.state.value.input.houseRules)
+        assertEquals(2, model.state.value.edit?.members?.size)
+
+        model.updateInput { it.copy(name = "Stadtgarten Ost") }
+        val before = NetworkSignals.crowds.value
+        model.save()
+        assertEquals(CrowdFormOutcome.Close, model.state.value.outcome)
+        assertTrue(NetworkSignals.crowds.value > before)
+        assertTrue(network.last("network/crowds/stadtgarten").body!!.contains("\"name\":\"Stadtgarten Ost\""))
+        model.consumeOutcome()
+        assertNull(model.state.value.outcome)
+    }
+
+    @Test
+    fun `the form shows why it cannot load or save`() = runTest {
+        val network = StubbedNetwork(stub("GET", "network/crowds/stadtgarten/edit", """{"message":"Kein Zugriff."}""", 403))
+        val model = models.keep(CrowdFormViewModel("stadtgarten", network.repository))
+        model.load()
+        assertEquals("Kein Zugriff.", model.state.value.loadError?.userMessage)
+
+        network.add("GET", "network/crowds/stadtgarten/edit", json = editForm)
+        network.add("PUT", "network/crowds/stadtgarten", 422, """{"message":"Der Name fehlt.","errors":{"name":["Der Name fehlt."]}}""")
+        model.load()
+        assertNull(model.state.value.loadError)
+        model.save()
+        assertEquals("Der Name fehlt.", model.error.value?.message("name"))
+        assertNull(model.state.value.outcome)
+    }
+
+    @Test
+    fun `a banner is stored at once when editing and removed again`() = runTest {
+        val network = StubbedNetwork(
+            stub("GET", "network/crowds/stadtgarten/edit", editForm),
+            stub("POST", "network/crowds/stadtgarten/banner", """{"message":"Das Banner ist gespeichert."}"""),
+            stub("DELETE", "network/crowds/stadtgarten/banner", """{"message":"Das Banner ist entfernt."}""")
+        )
+        val model = models.keep(CrowdFormViewModel("stadtgarten", network.repository))
+        model.load()
+        model.pickBanner(banner)
+        assertEquals("Das Banner ist gespeichert.", model.status.value)
+        assertNull(model.state.value.banner)
+        assertTrue(network.last("network/crowds/stadtgarten/banner").body!!.contains("filename=\"banner.jpg\""))
+
+        model.removeBanner()
+        assertEquals("Das Banner ist entfernt.", model.status.value)
+        assertEquals(3, network.transport.requests.count { it.path == "network/crowds/stadtgarten/edit" })
+    }
+
+    @Test
+    fun `a stored banner or a new host keeps what was typed, and a failed refresh keeps the form`() = runTest {
+        val network = StubbedNetwork(
+            stub("GET", "network/crowds/stadtgarten/edit", editForm),
+            stub("POST", "network/crowds/stadtgarten/banner", """{"message":"Das Banner ist gespeichert."}"""),
+            stub("DELETE", "network/crowds/stadtgarten/banner", """{"message":"Das Banner ist entfernt."}"""),
+            stub(
+                "PUT",
+                "network/crowds/stadtgarten/members/3/role",
+                """{"message":"Aylin ist jetzt Gastgeberin.","data":{"still_host":true}}"""
+            )
+        )
+        val model = models.keep(CrowdFormViewModel("stadtgarten", network.repository))
+        model.load()
+        model.updateInput { it.copy(description = "Gärtnern im Hinterhof.") }
+        val withBanner = editForm.replace("\"banner_url\": null", "\"banner_url\": \"http://localhost/banner.webp\"")
+        network.add("GET", "network/crowds/stadtgarten/edit", json = withBanner)
+        model.pickBanner(banner)
+        assertEquals("http://localhost/banner.webp", model.state.value.edit?.crowd?.bannerUrl)
+        assertEquals("Gärtnern im Hinterhof.", model.state.value.input.description)
+
+        model.setRole(3, "host")
+        assertEquals("Aylin ist jetzt Gastgeberin.", model.status.value)
+        assertEquals("Gärtnern im Hinterhof.", model.state.value.input.description)
+
+        network.add("GET", "network/crowds/stadtgarten/edit", 500, """{"message":"Kaputt."}""")
+        model.removeBanner()
+        assertNull(model.state.value.loadError)
+        assertEquals("Kaputt.", model.error.value?.userMessage)
+        assertEquals("Gärtnern im Hinterhof.", model.state.value.input.description)
+        assertEquals("Freundlich bleiben.", model.state.value.input.houseRules)
+    }
+
+    @Test
+    fun `Posts and the member list whose load was cancelled with the crowd page load again with it`() = runTest {
+        val asked = CompletableDeferred<Unit>()
+        val gate = CompletableDeferred<Unit>()
+        val network = StubbedNetwork(
+            stub("GET", "network/crowds/stadtgarten", detail(member = true)),
+            stub("GET", "network/crowds/stadtgarten/posts", pageJson(postJson(4))),
+            stub("GET", "network/crowds/stadtgarten/members", """{"data":{"members":[],"hidden_members":2,"own_list_audience":null}}""")
+        )
+        val slow = object : NetworkRepository by network.repository {
+            override suspend fun crowdPosts(slug: String, cursor: String?): FeedPage<NoContext> {
+                asked.complete(Unit)
+                gate.await()
+                return network.repository.crowdPosts(slug, cursor)
+            }
+        }
+        val model = models.keep(CrowdViewModel("stadtgarten", slow))
+        // A rotation while the crowd's Posts load cancels the screen's coroutine, before the member list was asked for.
+        val screen = launch { model.loadIfNeeded() }
+        asked.await()
+        screen.cancelAndJoin()
+        assertEquals(Loadable.Idle, model.posts.state.value.state)
+        assertNull(model.members.value)
+
+        gate.complete(Unit)
+        model.loadIfNeeded()
+        assertEquals(listOf(4), model.posts.posts.map { it.id })
+        assertEquals(2, model.members.value?.hiddenMembers)
+        model.loadIfNeeded()
+        assertEquals(1, network.transport.requests.count { it.path == "network/crowds/stadtgarten/members" })
+    }
+
+    @Test
+    fun `a refused banner keeps the form`() = runTest {
+        val network = StubbedNetwork(
+            stub("GET", "network/crowds/stadtgarten/edit", editForm),
+            stub("POST", "network/crowds/stadtgarten/banner", """{"message":"Zu groß.","errors":{"banner":["Zu groß."]}}""", 422),
+            stub("DELETE", "network/crowds/stadtgarten/banner", """{"message":"Kaputt."}""", 500)
+        )
+        val model = models.keep(CrowdFormViewModel("stadtgarten", network.repository))
+        model.load()
+        model.pickBanner(banner)
+        assertEquals("Zu groß.", model.error.value?.message("banner"))
+        model.removeBanner()
+        assertEquals("Kaputt.", model.error.value?.userMessage)
+        assertEquals(1, network.transport.requests.count { it.path == "network/crowds/stadtgarten/edit" })
+    }
+
+    @Test
+    fun `a banner picked while founding waits for Crowd eröffnen`() = runTest {
+        val network = StubbedNetwork(stub("GET", "network/crowds", Fixtures.crowds))
+        val model = models.keep(CrowdFormViewModel(null, network.repository))
+        assertFalse(model.editing)
+        model.load()
+        model.pickBanner(banner)
+        assertEquals(banner, model.state.value.banner)
+        assertEquals("Das Banner wird mit der Crowd gespeichert.", model.status.value)
+
+        model.removeBanner()
+        assertNull(model.state.value.banner)
+        assertEquals("Das Banner ist entfernt. Jetzt zeigen wir wieder die Farbe der Crowd.", model.status.value)
+        assertEquals(1, network.transport.requests.size)
+
+        model.setRole(3, "host")
+        assertEquals(1, network.transport.requests.size)
+    }
+
+    @Test
+    fun `making someone host reloads, giving up the own role leaves the form`() = runTest {
+        val network = StubbedNetwork(
+            stub("GET", "network/crowds/stadtgarten/edit", editForm),
+            stub(
+                "PUT",
+                "network/crowds/stadtgarten/members/3/role",
+                """{"message":"Aylin ist jetzt Gastgeberin.","data":{"still_host":true}}"""
+            )
+        )
+        val model = models.keep(CrowdFormViewModel("stadtgarten", network.repository))
+        model.load()
+        model.setRole(3, "host")
+        assertEquals("Aylin ist jetzt Gastgeberin.", model.status.value)
+        assertTrue(network.last("network/crowds/stadtgarten/members/3/role").body!!.contains("\"role\":\"host\""))
+        assertNull(model.state.value.outcome)
+
+        network.add(
+            "PUT",
+            "network/crowds/stadtgarten/members/1/role",
+            json = """{"message":"Du bist jetzt Mitglied.","data":{"still_host":false}}"""
+        )
+        model.setRole(1, "member")
+        assertEquals("Du bist jetzt Mitglied.", NetworkSignals.confirmation.value)
+        assertEquals(CrowdFormOutcome.Close, model.state.value.outcome)
+
+        network.add(
+            "PUT",
+            "network/crowds/stadtgarten/members/3/role",
+            422,
+            """{"message":"Es braucht eine Gastgeberin.","errors":{"role":["Es braucht eine Gastgeberin."]}}"""
+        )
+        model.setRole(3, "member")
+        assertEquals("Es braucht eine Gastgeberin.", model.error.value?.message("role"))
+    }
+
+    @Test
+    fun `closing needs the confirmation and hands the result to the overview`() = runTest {
+        val network = StubbedNetwork(
+            stub("GET", "network/crowds/stadtgarten/close", """{"data":{"name":"Stadtgarten","members_count":4,"posts_count":9}}"""),
+            stub(
+                "DELETE",
+                "network/crowds/stadtgarten",
+                """{"message":"Bitte bestätige.","errors":{"confirm":["Bitte bestätige."]}}""",
+                422
+            )
+        )
+        val model = models.keep(CloseCrowdViewModel("stadtgarten", network.repository))
+        model.load()
+        assertEquals(9, model.closing.value.valueOrNull?.postsCount)
+        model.close()
+        assertEquals("Bitte bestätige.", model.error.value?.message("confirm"))
+        assertFalse(model.closed.value)
+
+        network.add("DELETE", "network/crowds/stadtgarten", json = """{"message":"Die Crowd ist geschlossen."}""")
+        model.setConfirmed(true)
+        val before = NetworkSignals.crowds.value
+        model.close()
+        assertTrue(model.closed.value)
+        assertEquals("Die Crowd ist geschlossen.", NetworkSignals.confirmation.value)
+        assertTrue(NetworkSignals.crowds.value > before)
+        assertTrue(network.last("network/crowds/stadtgarten").body!!.contains("\"confirm\":true"))
+    }
+
+    @Test
+    fun `the host statistics load`() = runTest {
+        val network = StubbedNetwork(
+            stub(
+                "GET",
+                "network/crowds/stadtgarten/statistics",
+                """{"data":{"name":"Stadtgarten","totals":{"members":4,"hosts":1,"posts":9,"posts_30_days":3,"active_authors_30_days":2,
+                |"removed":0},"weekly":[{"week":"2026-10-19T00:00:00.000000Z","joined":1,"posts":2}]}}
+                """.trimMargin()
+            )
+        )
+        val model = models.keep(CrowdStatisticsViewModel("stadtgarten", network.repository))
+        model.load()
+        val stats = model.statistics.value.valueOrNull!!
+        assertEquals(3, stats.totals.posts30Days)
+        assertEquals(2, stats.weekly.single().posts)
+    }
+}

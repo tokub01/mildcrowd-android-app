@@ -1,12 +1,12 @@
 plugins {
-    alias(libs.plugins.oasis.android.feature)
+    alias(libs.plugins.mildcrowd.android.feature)
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.network"
+    namespace = "de.velwebsolutions.mildcrowd.network"
 }
 
-// Posts, Crowds, profiles, discovery and search (OasisNetwork on iOS). The photo picker and the camera need the
+// Posts, Crowds, profiles, discovery and search (MildcrowdNetwork on iOS). The photo picker and the camera need the
 // activity result APIs; the camera shares its file through androidx.core's FileProvider.
 dependencies {
     implementation(libs.androidx.activity.compose)

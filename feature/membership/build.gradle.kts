@@ -1,9 +1,9 @@
 plugins {
-    alias(libs.plugins.oasis.android.feature)
+    alias(libs.plugins.mildcrowd.android.feature)
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.membership"
+    namespace = "de.velwebsolutions.mildcrowd.membership"
 }
 
 // Google Play Billing for the in-app membership (PlayBillingGateway); core-ktx for the FileProvider of invoices.

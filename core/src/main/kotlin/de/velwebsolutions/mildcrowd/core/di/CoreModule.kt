@@ -1,0 +1,93 @@
+package de.velwebsolutions.mildcrowd.core.di
+
+import android.content.Context
+import dagger.Lazy
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import de.velwebsolutions.mildcrowd.core.auth.AuthApi
+import de.velwebsolutions.mildcrowd.core.auth.KeystoreTokenStore
+import de.velwebsolutions.mildcrowd.core.auth.RemoteAuthApi
+import de.velwebsolutions.mildcrowd.core.auth.Session
+import de.velwebsolutions.mildcrowd.core.auth.SessionState
+import de.velwebsolutions.mildcrowd.core.auth.TokenStore
+import de.velwebsolutions.mildcrowd.core.network.ApiClient
+import de.velwebsolutions.mildcrowd.core.network.ApiConfig
+import de.velwebsolutions.mildcrowd.core.network.CommonApi
+import de.velwebsolutions.mildcrowd.core.network.RemoteCommonApi
+import de.velwebsolutions.mildcrowd.core.onboarding.OnboardingCardStore
+import de.velwebsolutions.mildcrowd.core.onboarding.PreferencesOnboardingCardStore
+import de.velwebsolutions.mildcrowd.core.screentime.PreferencesScreenTimeStore
+import de.velwebsolutions.mildcrowd.core.screentime.ScreenTime
+import java.util.concurrent.TimeUnit
+import javax.inject.Qualifier
+import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import okhttp3.OkHttpClient
+
+/** The device name sent with sign-ins and shown in Privatsphäre › Geräte. */
+data class DeviceName(val value: String)
+
+/**
+ * The installed version of the app: [name] is the shared product version („Mildcrowd 0.23.0“, the same on web, iOS and
+ * Android); [freshInstall] is true when the app was installed and never updated since.
+ */
+data class AppVersion(val name: String, val freshInstall: Boolean)
+
+/** The app-wide coroutine scope (outlives screens: sign-out, push registration, live counters). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AppScope
+
+/** The shared objects of `:core`. The app module provides [ApiConfig], [DeviceName] and [AppVersion]. */
+@Module
+@InstallIn(SingletonComponent::class)
+object CoreModule {
+    @Provides
+    @Singleton
+    @AppScope
+    fun appScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    @Provides
+    @Singleton
+    fun tokenStore(@ApplicationContext context: Context, config: ApiConfig): TokenStore =
+        KeystoreTokenStore(context, origin = config.baseUrl.trimEnd('/'))
+
+    @Provides
+    @Singleton
+    fun session(tokenStore: TokenStore, deviceName: DeviceName, @AppScope scope: CoroutineScope, auth: Lazy<AuthApi>): Session =
+        Session(tokenStore, deviceName.value, scope) { auth.get() }
+
+    /** „Später“ of the Start's card „Mach deine Startseite lebendig“, on this device. */
+    @Provides
+    @Singleton
+    fun onboardingCard(@ApplicationContext context: Context): OnboardingCardStore = PreferencesOnboardingCardStore(context)
+
+    /** „Deine Zeit in Mildcrowd“ of the signed-in account, on this device only. */
+    @Provides
+    @Singleton
+    fun screenTime(@ApplicationContext context: Context, session: Session): ScreenTime =
+        ScreenTime(PreferencesScreenTimeStore(context), userId = { (session.state.value as? SessionState.SignedIn)?.me?.id })
+
+    @Provides
+    @Singleton
+    fun apiClient(config: ApiConfig, session: Session): ApiClient {
+        val okHttp = OkHttpClient.Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build()
+        return ApiClient(config, session, okHttp)
+    }
+
+    @Provides
+    @Singleton
+    fun authApi(client: ApiClient): AuthApi = RemoteAuthApi(client)
+
+    @Provides
+    @Singleton
+    fun commonApi(client: ApiClient): CommonApi = RemoteCommonApi(client)
+}

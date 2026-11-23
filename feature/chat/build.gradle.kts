@@ -1,9 +1,9 @@
 plugins {
-    alias(libs.plugins.oasis.android.feature)
+    alias(libs.plugins.mildcrowd.android.feature)
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.chat"
+    namespace = "de.velwebsolutions.mildcrowd.chat"
 }
 
 dependencies {

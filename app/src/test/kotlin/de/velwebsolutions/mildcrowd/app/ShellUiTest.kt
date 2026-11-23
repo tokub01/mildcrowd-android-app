@@ -1,0 +1,272 @@
+package de.velwebsolutions.mildcrowd.app
+
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import com.github.takahirom.roborazzi.captureRoboImage
+import de.velwebsolutions.mildcrowd.app.shell.LocalAppScreens
+import de.velwebsolutions.mildcrowd.app.ui.RootScreen
+import de.velwebsolutions.mildcrowd.app.ui.RootViewModel
+import de.velwebsolutions.mildcrowd.core.auth.InMemoryTokenStore
+import de.velwebsolutions.mildcrowd.core.auth.Session
+import de.velwebsolutions.mildcrowd.core.model.Me
+import de.velwebsolutions.mildcrowd.core.network.ApiError
+import de.velwebsolutions.mildcrowd.design.navigation.AccountRoute
+import de.velwebsolutions.mildcrowd.design.navigation.ChatRoute
+import de.velwebsolutions.mildcrowd.design.navigation.LiveRoute
+import de.velwebsolutions.mildcrowd.design.navigation.LocalNavigator
+import de.velwebsolutions.mildcrowd.design.navigation.MainTab
+import de.velwebsolutions.mildcrowd.design.navigation.MembershipRoute
+import de.velwebsolutions.mildcrowd.design.navigation.Navigator
+import de.velwebsolutions.mildcrowd.design.navigation.NetworkRoute
+import de.velwebsolutions.mildcrowd.design.navigation.StaffRoute
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdTheme
+import de.velwebsolutions.mildcrowd.network.NetworkSignals
+import de.velwebsolutions.mildcrowd.testing.MainDispatcherRule
+import kotlinx.coroutines.test.TestScope
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "w411dp-h891dp-xxhdpi")
+class ShellUiTest {
+    /** The real graph binds links to the debug server; these tests use mildcrowd.com links. */
+    @org.junit.Before
+    fun resetOwnHost() {
+        de.velwebsolutions.mildcrowd.design.navigation.DeepLink.ownHost = null
+    }
+
+    @get:Rule(order = 0)
+    val main = MainDispatcherRule()
+
+    @get:Rule(order = 1)
+    val compose = createAndroidComposeRule<androidx.activity.ComponentActivity>()
+
+    private val live = FakeLive()
+    private val navigator = Navigator()
+
+    private fun start(me: Me? = mira, error: Exception? = null, token: String? = "t"): RootViewModel {
+        val auth = FakeAuth(me ?: mira, error)
+        val session = Session(InMemoryTokenStore(token), "Pixel", TestScope()).apply { this.auth = auth }
+        val model = RootViewModel(session, live, FakePurchases())
+        compose.setContent {
+            MildcrowdTheme {
+                CompositionLocalProvider(LocalNavigator provides navigator, LocalAppScreens provides FakeScreens) {
+                    RootScreen(model)
+                }
+            }
+        }
+        return model
+    }
+
+    @Test
+    fun `signed out, unverified, locked and new members see their screen`() {
+        start(token = null)
+        compose.onNodeWithText("Anmelden-Screen").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an unverified member confirms the e-mail first`() {
+        start(mira.copy(emailVerified = false))
+        compose.onNodeWithText("E-Mail-Screen").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a member without a confirmed mobile number confirms it before paying or using Mildcrowd`() {
+        start(mira.copy(phoneVerified = false, hasPaidAccess = false))
+        compose.onNodeWithText("Handy-Screen").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a locked member sees the lock screen`() {
+        start(mira.copy(isSuspended = true))
+        compose.onNodeWithText("Inhalt ${AccountRoute.Suspended}").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a new member lands in the tabs, the tour waits behind the Start's card`() {
+        start(mira.copy(onboarded = false))
+        compose.onNodeWithText("Inhalt ${NetworkRoute.Source}").assertIsDisplayed()
+    }
+
+    @Test
+    fun `offline at start the app waits on the sign-in page`() {
+        start(error = ApiError.Transport("offline"))
+        compose.onNodeWithText("Anmelden-Screen").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the tabs show their roots, the header and the counters`() {
+        start()
+        live.chats.value = 3
+        live.hints.value = 2
+        compose.onNodeWithText("Inhalt ${NetworkRoute.Source}").assertIsDisplayed()
+        compose.onNodeWithText("Glocke").assertIsDisplayed()
+        compose.onNodeWithText("Chat-Hinweis").assertExists()
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/app-tabs.png")
+        assertEquals(listOf(7), live.started)
+        mapOf(
+            MainTab.Discover to NetworkRoute.Discover,
+            MainTab.Crowds to NetworkRoute.Crowds,
+            MainTab.Chats to ChatRoute.Conversations,
+            MainTab.Profile to NetworkRoute.Profile("mira")
+        ).forEach { (tab, root) ->
+            compose.onNodeWithTag("tab.${tab.name.lowercase()}").performClick()
+            compose.onNodeWithText("Inhalt $root").assertIsDisplayed()
+        }
+        compose.waitForIdle()
+        assertEquals(false, live.showingChats)
+        compose.onNodeWithText("3", useUnmergedTree = true).assertExists()
+    }
+
+    @Test
+    fun `the header searches, goes home and pushes screens with a way back`() {
+        start()
+        compose.onNodeWithContentDescription("Suchen").performClick()
+        compose.onNodeWithText("Inhalt ${NetworkRoute.Search()}").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Zurück").performClick()
+        compose.onNodeWithText("Inhalt ${NetworkRoute.Source}").assertIsDisplayed()
+        compose.onNodeWithTag("tab.crowds").performClick()
+        compose.onNodeWithContentDescription("Mildcrowd – zur Startseite").performClick()
+        assertEquals(MainTab.Source, navigator.selectedTab)
+    }
+
+    @Test
+    fun `the Mehr menu opens every account page and signs out`() {
+        val model = start(mira.copy(isStaff = true, isAdmin = true))
+        live.hints.value = 4
+        val pages = listOf(
+            "Hinweise" to LiveRoute.Inbox, "Freund:innen" to NetworkRoute.Friends, "Gemerkt" to NetworkRoute.Bookmarks,
+            "Einstellungen" to AccountRoute.Settings, "Mitgliedschaft" to MembershipRoute.Overview,
+            "Deine Zahlen" to NetworkRoute.Statistics, "Zeitkapseln" to NetworkRoute.TimeCapsules, "Jahrbuch" to NetworkRoute.Yearbook(),
+            "Menschen einladen" to NetworkRoute.Invitations,
+            "Privatsphäre" to AccountRoute.Privacy, "Blockiert & stumm" to AccountRoute.Safety,
+            "Ideen für Mildcrowd" to NetworkRoute.Ideas(), "Wohin dein Beitrag geht" to MembershipRoute.Transparency,
+            "Begriffe erklärt" to AccountRoute.Glossary, "Was ist neu" to AccountRoute.Releases,
+            "Moderation" to StaffRoute.Moderation, "Verwaltung" to StaffRoute.AdminDashboard
+        )
+        pages.forEach { (title, route) ->
+            compose.onNodeWithTag("more.menu").performClick()
+            compose.onNodeWithText(title).performScrollTo().performClick()
+            compose.onNodeWithText("Inhalt $route").assertIsDisplayed()
+            navigator.popToRoot()
+        }
+        compose.onNodeWithTag("more.menu").performClick()
+        compose.onAllNodes(isRoot())[1].captureRoboImage("build/outputs/roborazzi/app-more.png")
+        compose.onNodeWithTag("appearance.Dark").performScrollTo().assertExists()
+        compose.onNodeWithText("Abmelden").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Anmelden-Screen").assertIsDisplayed()
+        assertTrue(live.stops >= 1)
+        assertEquals(model.state.value.javaClass.simpleName, "SignedOut")
+    }
+
+    @Test
+    fun `sheets close themselves and confirmations show as a snackbar`() {
+        start()
+        compose.runOnIdle { navigator.present(NetworkRoute.Compose()) }
+        compose.onNodeWithText("Inhalt ${NetworkRoute.Compose()}").assertIsDisplayed()
+        compose.runOnIdle { navigator.open(NetworkRoute.Post(1)) }
+        compose.onNodeWithText("Inhalt ${NetworkRoute.Post(1)}").assertIsDisplayed()
+        compose.runOnIdle { navigator.back() }
+        compose.onNodeWithContentDescription("Schließen").performClick()
+        compose.waitForIdle()
+        assertNull(navigator.sheet)
+        compose.runOnIdle { NetworkSignals.confirmation.value = "Dein Post ist da." }
+        compose.onNodeWithText("Dein Post ist da.").assertIsDisplayed()
+        compose.mainClock.advanceTimeBy(6_000)
+        compose.waitForIdle()
+        assertNull(NetworkSignals.confirmation.value)
+    }
+
+    @Test
+    fun `system back leaves a screen pushed over the lock screen`() {
+        start(mira.copy(isSuspended = true))
+        compose.runOnIdle { navigator.open(AccountRoute.Glossary) }
+        compose.onNodeWithText("Inhalt ${AccountRoute.Glossary}").assertIsDisplayed()
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.onNodeWithText("Inhalt ${AccountRoute.Suspended}").assertIsDisplayed()
+    }
+
+    @Test
+    fun `moderators without admin rights and closing the menu again`() {
+        start(mira.copy(isStaff = true))
+        compose.onNodeWithTag("more.menu").performClick()
+        compose.onNodeWithText("Moderation").assertExists()
+        compose.onAllNodes(androidx.compose.ui.test.hasText("Verwaltung")).assertCountEquals(0)
+        compose.onAllNodes(isRoot())[0].let { }
+        compose.onNodeWithTag("more.menu").performClick()
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `members without staff rights see no moderation`() {
+        start()
+        compose.onNodeWithTag("more.menu").performClick()
+        compose.onAllNodes(androidx.compose.ui.test.hasText("Moderation")).assertCountEquals(0)
+    }
+
+    @Test
+    fun `without a membership only Mitglied werden, the membership, the settings and sign-out are open`() {
+        val model = start(mira.copy(hasPaidAccess = false))
+        compose.onNodeWithText("Inhalt ${MembershipRoute.Checkout}").assertIsDisplayed()
+        compose.onAllNodes(androidx.compose.ui.test.hasTestTag("tab.source")).assertCountEquals(0)
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/app-paywall.png")
+        listOf(
+            "Mitgliedschaft & Gutschein" to MembershipRoute.Overview,
+            "Einstellungen" to AccountRoute.Settings
+        ).forEach { (title, route) ->
+            compose.onNodeWithTag("paywall.menu").performClick()
+            compose.onNodeWithText(title).performClick()
+            compose.onNodeWithText("Inhalt $route").assertIsDisplayed()
+            compose.runOnIdle { navigator.back() }
+        }
+        compose.onNodeWithTag("paywall.menu").performClick()
+        compose.onNodeWithText("Abmelden").performClick()
+        compose.onNodeWithText("Anmelden-Screen").assertIsDisplayed()
+        assertEquals("SignedOut", model.state.value.javaClass.simpleName)
+    }
+
+    @Test
+    fun `a companion link opens without a membership`() {
+        start(mira.copy(hasPaidAccess = false))
+        val link = "https://mildcrowd.com/app/mitgliedschaft/mitkommen/" + "a".repeat(40)
+        compose.runOnIdle { navigator.handle(link) }
+        compose.onNodeWithText("Inhalt ${MembershipRoute.CompanionLink("a".repeat(40))}").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a membership bought elsewhere opens the app when it comes back`() {
+        val auth = FakeAuth(mira.copy(hasPaidAccess = false))
+        val session = Session(InMemoryTokenStore("t"), "Pixel", TestScope()).apply { this.auth = auth }
+        val model = RootViewModel(session, live, FakePurchases())
+        compose.setContent {
+            MildcrowdTheme {
+                CompositionLocalProvider(LocalNavigator provides navigator, LocalAppScreens provides FakeScreens) { RootScreen(model) }
+            }
+        }
+        compose.onNodeWithText("Inhalt ${MembershipRoute.Checkout}").assertIsDisplayed()
+        auth.me = mira
+        compose.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.STARTED)
+        compose.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+        compose.waitUntil(5_000) {
+            compose.onAllNodes(androidx.compose.ui.test.hasTestTag("tab.source")).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+}

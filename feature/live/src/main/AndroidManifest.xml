@@ -4,7 +4,7 @@
     <application>
         <!-- Push hints over Firebase Cloud Messaging; receives nothing while the app has no google-services.json. -->
         <service
-            android:name=".push.OasisMessagingService"
+            android:name=".push.MildcrowdMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />

@@ -11,7 +11,7 @@ mit R8 verkleinert und mit dem Upload-Schlüssel signiert. Google signiert sie f
 2. **App anlegen:** „App erstellen“ → Name „Mildcrowd“, Standardsprache Deutsch (Deutschland), App (nicht Spiel),
    kostenlos (die Mitgliedschaft ist ein In-App-Abo). Die Erklärungen zu Richtlinien und US-Exportgesetzen bestätigen.
 3. **Erste Version von Hand hochladen** (Google verlangt das, bevor die API Uploads annimmt):
-   `./gradlew :app:bundlePlay` (lokal, mit `secrets.properties` → `OASIS_GATE_KEY` und dem Upload-Schlüssel unter
+   `./gradlew :app:bundlePlay` (lokal, mit `secrets.properties` → `MILDCROWD_GATE_KEY` und dem Upload-Schlüssel unter
    `~/.android-keys/`) erzeugt `app/build/outputs/bundle/play/app-play.aab`. In der Console: Testen → Interner Test →
    Neuer Release → AAB hochladen. Dabei Play App Signing aktivieren (Standard: Google verwaltet den App-Signaturschlüssel,
    unser Schlüssel ist nur der Upload-Schlüssel).

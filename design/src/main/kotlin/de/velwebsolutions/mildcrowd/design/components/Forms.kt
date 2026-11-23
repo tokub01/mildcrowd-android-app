@@ -1,0 +1,246 @@
+package de.velwebsolutions.mildcrowd.design.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdColors
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdRadius
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdType
+
+/** Keyboard presets of the iOS field modifiers (e-mail, username, password, one-time code, no capitalisation). */
+object MildcrowdKeyboard {
+    val Email = KeyboardOptions(keyboardType = KeyboardType.Email, capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false)
+    val Username = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false)
+    val Password = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false)
+    val OneTimeCode = KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
+    val NoCapitalization = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false)
+    val Sentences = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+}
+
+/** A labelled text field in the web's style with an optional error and hint below it. */
+@Composable
+fun MildcrowdTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    prompt: String? = null,
+    error: String? = null,
+    hint: String? = null,
+    isSecure: Boolean = false,
+    /** Makes the field grow vertically within this many lines (bio, house rules, edits). */
+    lines: IntRange? = null,
+    keyboardOptions: KeyboardOptions = if (isSecure) MildcrowdKeyboard.Password else MildcrowdKeyboard.Sentences,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    enabled: Boolean = true,
+    /** The server's limit in characters (the web's `maxlength`): longer input is cut there. */
+    maxLength: Int? = null,
+    /** A button at the end of the field, e.g. the eye that shows a password. */
+    trailing: (@Composable () -> Unit)? = null
+) {
+    val shape = RoundedCornerShape(MildcrowdRadius.XS.dp)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MildcrowdType.SmallBold, color = MildcrowdColors.Ink)
+        BasicTextField(
+            value = value,
+            onValueChange = { changed -> onValueChange(limitText(changed, maxLength)) },
+            enabled = enabled,
+            textStyle = MildcrowdType.Body.copy(color = MildcrowdColors.Ink),
+            cursorBrush = SolidColor(MildcrowdColors.Night),
+            singleLine = lines == null,
+            minLines = lines?.first ?: 1,
+            maxLines = lines?.last ?: 1,
+            visualTransformation = if (isSecure) PasswordVisualTransformation() else VisualTransformation.None,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = label },
+            decorationBox = { inner ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(MildcrowdColors.Field, shape)
+                        .border(
+                            if (error == null) {
+                                1.dp
+                            } else {
+                                2.dp
+                            },
+                            if (error == null) MildcrowdColors.FieldLine else MildcrowdColors.Danger,
+                            shape
+                        )
+                        .padding(start = 14.dp, top = 12.dp, bottom = 12.dp, end = if (trailing == null) 14.dp else 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        if (value.isEmpty() && prompt != null) {
+                            Text(prompt, style = MildcrowdType.Body, color = MildcrowdColors.Muted)
+                        }
+                        inner()
+                    }
+                    trailing?.invoke()
+                }
+            }
+        )
+        if (error != null) {
+            FieldError(error)
+        } else if (hint != null) {
+            Text(hint, style = MildcrowdType.Caption, color = MildcrowdColors.Muted)
+        }
+    }
+}
+
+/** The red message below an invalid field. */
+@Composable
+fun FieldError(message: String, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.ErrorOutline, contentDescription = null, tint = MildcrowdColors.Danger, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(message, style = MildcrowdType.Caption, color = MildcrowdColors.Danger)
+    }
+}
+
+/** A toggle row with title and explanation, as in the settings and privacy screens. */
+@Composable
+fun SettingToggle(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    detail: String? = null,
+    enabled: Boolean = true
+) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MildcrowdType.BodyBold, color = MildcrowdColors.Ink)
+            if (detail != null) Text(detail, style = MildcrowdType.Small, color = MildcrowdColors.Muted)
+        }
+        Spacer(Modifier.width(12.dp))
+        MildcrowdSwitch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+            modifier = Modifier.semantics { contentDescription = title }
+        )
+    }
+}
+
+/**
+ * The Mildcrowd switch: off is a 2 dp ink frame with a dark knob on the field colour, on is filled night with a light knob
+ * (the Material default's light grey off state was easy to miss on paper). Same look as iOS' MildcrowdSwitchStyle.
+ */
+@Composable
+fun MildcrowdSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        enabled = enabled,
+        colors = SwitchDefaults.colors(
+            checkedTrackColor = MildcrowdColors.Night,
+            checkedThumbColor = MildcrowdColors.OnNight,
+            checkedBorderColor = MildcrowdColors.Night,
+            uncheckedTrackColor = MildcrowdColors.Field,
+            uncheckedBorderColor = MildcrowdColors.Ink2,
+            uncheckedThumbColor = MildcrowdColors.Ink2
+        )
+    )
+}
+
+/**
+ * The Mildcrowd checkbox for consents and confirmations ("Ich akzeptiere …", "Ich habe den Inhalt gelesen"), like the web
+ * form: a dark 2 dp frame, filled night with a light tick when checked (iOS' MildcrowdCheckboxStyle).
+ */
+@Composable
+fun MildcrowdCheckbox(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Checkbox(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier,
+        enabled = enabled,
+        colors = CheckboxDefaults.colors(
+            checkedColor = MildcrowdColors.Night,
+            uncheckedColor = MildcrowdColors.Ink2,
+            checkmarkColor = MildcrowdColors.OnNight
+        )
+    )
+}
+
+/** A consent or confirmation: [MildcrowdCheckbox] with its text, the whole row tappable (at least 44 dp high). */
+@Composable
+fun ConsentCheck(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    label: @Composable () -> Unit
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onCheckedChange)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        MildcrowdCheckbox(checked, onCheckedChange = null, modifier = Modifier.padding(top = 2.dp), enabled = enabled)
+        Spacer(Modifier.width(12.dp))
+        Box(Modifier.weight(1f)) { label() }
+    }
+}
+
+/** [ConsentCheck] with a plain text. */
+@Composable
+fun ConsentCheck(
+    text: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    ConsentCheck(checked, onCheckedChange, modifier, enabled) { Text(text, style = MildcrowdType.Body, color = MildcrowdColors.Ink) }
+}
+
+/** [text] cut to [maxLength] characters (code points, as the server counts them); unchanged without a limit. */
+fun limitText(text: String, maxLength: Int?): String = if (maxLength == null ||
+    text.codePointCount(0, text.length) <= maxLength
+) {
+    text
+} else {
+    text.substring(0, text.offsetByCodePoints(0, maxLength))
+}

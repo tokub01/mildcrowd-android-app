@@ -10,7 +10,7 @@
     "title": "Wer dich sieht"
    },
    {
-    "key": "oasen",
+    "key": "crowds",
     "title": "Crowds finden"
    },
    {
@@ -66,7 +66,7 @@
     "label": "Nur für Mitglieder"
    }
   ],
-  "oases": [
+  "crowds": [
    {
     "id": 1,
     "slug": "korn-licht",
@@ -88,6 +88,6 @@
     "joined": false
    }
   ],
-  "oases_hand_picked": true
+  "crowds_hand_picked": true
  }
 }

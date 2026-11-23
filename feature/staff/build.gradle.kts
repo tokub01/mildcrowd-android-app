@@ -1,9 +1,9 @@
 plugins {
-    alias(libs.plugins.oasis.android.feature)
+    alias(libs.plugins.mildcrowd.android.feature)
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.staff"
+    namespace = "de.velwebsolutions.mildcrowd.staff"
 }
 
 // core-ktx for the FileProvider of the evidence archive.

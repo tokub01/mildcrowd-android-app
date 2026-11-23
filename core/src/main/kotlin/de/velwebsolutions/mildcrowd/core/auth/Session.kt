@@ -1,0 +1,156 @@
+package de.velwebsolutions.mildcrowd.core.auth
+
+import de.velwebsolutions.mildcrowd.core.model.Me
+import de.velwebsolutions.mildcrowd.core.network.ApiError
+import de.velwebsolutions.mildcrowd.core.network.TokenProvider
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+
+/** The app-wide sign-in state. */
+sealed interface SessionState {
+    data object Loading : SessionState
+
+    data object SignedOut : SessionState
+
+    data class SignedIn(val me: Me) : SessionState
+}
+
+/**
+ * The app-wide sign-in state: owns the token, restores the session at start-up, signs in, out and registers, and keeps
+ * `me` fresh. A 401 from any request signs the app out (the token was revoked, e.g. under Privatsphäre › Geräte or by
+ * signing out on another device).
+ */
+class Session(
+    private val tokenStore: TokenStore,
+    /** The device name sent with sign-ins (shown in the token list), e.g. "Pixel 9 von Mira". */
+    private val deviceName: String,
+    private val scope: CoroutineScope,
+    /**
+     * Where the sign-in calls come from, asked on first use: the API client needs the session for its token and the
+     * calls need the client, so the DI graph hands over a lazy source instead of the calls themselves.
+     */
+    private val authSource: () -> AuthApi = { error("No AuthApi for this session") }
+) : TokenProvider {
+    private var authApi: AuthApi? = null
+
+    /** The sign-in calls ([authSource] unless a test sets them). */
+    var auth: AuthApi
+        get() = authApi ?: authSource().also { authApi = it }
+        set(value) {
+            authApi = value
+        }
+
+    private val mutableState = MutableStateFlow<SessionState>(SessionState.Loading)
+    val state: StateFlow<SessionState> = mutableState.asStateFlow()
+
+    private val signOutListeners = CopyOnWriteArrayList<() -> Unit>()
+
+    /** The member, when signed in. */
+    val me: Me?
+        get() = (state.value as? SessionState.SignedIn)?.me
+
+    /** Called on sign-out and when the token is revoked, so the live connection and push stop. */
+    fun addOnSignedOut(listener: () -> Unit) {
+        signOutListeners += listener
+    }
+
+    override fun currentToken(): String? = tokenStore.read()
+
+    override fun onUnauthenticated() {
+        scope.launch { handleUnauthenticated() }
+    }
+
+    /**
+     * Restore the stored token at start-up: signed in if the server still knows it, signed out (and the token forgotten)
+     * if it answers 401. Without an answer (offline, server error) a fresh start stays signed out of the UI but keeps the
+     * token, so the next start retries; a session this process already has stays signed in with the member it knows – a
+     * new activity restores again (e.g. after Back on Android 9–11), and the member may sign out meanwhile. A cancelled
+     * restore decides nothing, and neither does an answer that arrives after a sign-out or another sign-in ([refreshMe]).
+     */
+    suspend fun restore() {
+        val token = tokenStore.read()
+        if (token == null) {
+            mutableState.value = SessionState.SignedOut
+            return
+        }
+        // Null: the server answered 401, it no longer knows the token.
+        val restored = try {
+            SessionState.SignedIn(auth.me())
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: ApiError.Unauthenticated) {
+            null
+        } catch (_: Exception) {
+            state.value as? SessionState.SignedIn ?: SessionState.SignedOut
+        }
+        if (tokenStore.read() != token) return
+        if (restored == null) tokenStore.write(null)
+        mutableState.value = restored ?: SessionState.SignedOut
+    }
+
+    /** First sign-in step. Returns [SignInResult.TwoFactorRequired] when the code is needed next. */
+    suspend fun signIn(login: String, password: String): SignInResult = auth.login(login, password, deviceName).also(::apply)
+
+    /** Sign-in with the six-digit code by e-mail or SMS; like [signIn], the second factor may follow. */
+    suspend fun signInWithCode(login: String, code: String): SignInResult = auth.verifyLoginCode(login, code, deviceName).also(::apply)
+
+    /** Sign-in with a passkey assertion of [challenge]; no second factor follows (the passkey verified the member). */
+    suspend fun signInWithPasskey(challenge: String, credential: JsonObject) {
+        apply(auth.passkeySignIn(challenge, credential, deviceName))
+    }
+
+    /** Second step with the TOTP code or a recovery code. */
+    suspend fun completeTwoFactor(challenge: String, code: String?, recoveryCode: String?) {
+        apply(auth.twoFactor(challenge, code, recoveryCode))
+    }
+
+    /** Creates the account (same rules as /testen) and signs this device in. */
+    suspend fun register(registration: Registration, form: RegistrationForm) {
+        apply(auth.register(registration, form, deviceName))
+    }
+
+    /**
+     * Reload `me` (after changes to profile, membership, 2FA, verification …). An answer that arrives after a sign-out or
+     * another sign-in on this device is dropped: it belongs to the sign-in that asked, and would put a signed-out app back
+     * into the tabs without a token.
+     */
+    suspend fun refreshMe() {
+        if (me == null) return
+        val token = tokenStore.read()
+        val fresh = runCatching { auth.me() }.getOrNull() ?: return
+        if (tokenStore.read() == token) mutableState.value = SessionState.SignedIn(fresh)
+    }
+
+    /** Replace `me` locally when an endpoint already returned the new state. */
+    fun update(me: Me) {
+        mutableState.value = SessionState.SignedIn(me)
+    }
+
+    /** Sign out this device: revoke the token on the server (best effort) and forget it. */
+    suspend fun signOut() {
+        signOutListeners.forEach { it() }
+        runCatching { auth.logout() }
+        tokenStore.write(null)
+        mutableState.value = SessionState.SignedOut
+    }
+
+    internal fun handleUnauthenticated() {
+        if (me == null) return
+        signOutListeners.forEach { it() }
+        tokenStore.write(null)
+        mutableState.value = SessionState.SignedOut
+    }
+
+    private fun apply(result: SignInResult) {
+        if (result is SignInResult.SignedIn) {
+            tokenStore.write(result.token)
+            mutableState.value = SessionState.SignedIn(result.me)
+        }
+    }
+}

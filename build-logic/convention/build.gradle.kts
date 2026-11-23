@@ -2,7 +2,7 @@ plugins {
     `kotlin-dsl`
 }
 
-group = "de.velwebsolutions.oasis.buildlogic"
+group = "de.velwebsolutions.mildcrowd.buildlogic"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -26,20 +26,20 @@ dependencies {
 gradlePlugin {
     plugins {
         register("androidApplication") {
-            id = "oasis.android.application"
-            implementationClass = "de.velwebsolutions.oasis.buildlogic.AndroidApplicationConventionPlugin"
+            id = "mildcrowd.android.application"
+            implementationClass = "de.velwebsolutions.mildcrowd.buildlogic.AndroidApplicationConventionPlugin"
         }
         register("androidLibrary") {
-            id = "oasis.android.library"
-            implementationClass = "de.velwebsolutions.oasis.buildlogic.AndroidLibraryConventionPlugin"
+            id = "mildcrowd.android.library"
+            implementationClass = "de.velwebsolutions.mildcrowd.buildlogic.AndroidLibraryConventionPlugin"
         }
         register("androidFeature") {
-            id = "oasis.android.feature"
-            implementationClass = "de.velwebsolutions.oasis.buildlogic.AndroidFeatureConventionPlugin"
+            id = "mildcrowd.android.feature"
+            implementationClass = "de.velwebsolutions.mildcrowd.buildlogic.AndroidFeatureConventionPlugin"
         }
         register("jvmLibrary") {
-            id = "oasis.jvm.library"
-            implementationClass = "de.velwebsolutions.oasis.buildlogic.JvmLibraryConventionPlugin"
+            id = "mildcrowd.jvm.library"
+            implementationClass = "de.velwebsolutions.mildcrowd.buildlogic.JvmLibraryConventionPlugin"
         }
     }
 }

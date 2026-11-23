@@ -99,7 +99,7 @@
       "limited": false
      },
      {
-      "key": "oases_audience",
+      "key": "crowds_audience",
       "title": "Wer sieht, in welchen Crowds du bist?",
       "help": "Die Liste deiner Crowds auf deinem Profil. In der Crowd selbst bleibst du als Mitglied sichtbar.",
       "kind": "choice",
@@ -125,7 +125,7 @@
       "limited": false
      },
      {
-      "key": "oasis_list_audience",
+      "key": "crowd_list_audience",
       "title": "Wer sieht dich in Mitgliederlisten von Crowds?",
       "help": "Zu deinem eigenen Schutz ist voreingestellt, dass dich in den Mitgliederlisten deiner Crowds nur Freund:innen und Menschen sehen, denen du folgst. Alle anderen sehen dich dort nicht und können dich darüber weder anschreiben noch dein Profil öffnen. Du kannst das jederzeit umstellen.",
       "kind": "choice",

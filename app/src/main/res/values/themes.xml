@@ -1,6 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Sand window background (the iOS LaunchBackground) while Compose starts. -->
-    <style name="Theme.Oasis" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.Mildcrowd" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/sand</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>

@@ -1,0 +1,45 @@
+package de.velwebsolutions.mildcrowd.chat.core
+
+import de.velwebsolutions.mildcrowd.chat.data.ChatRepository
+import de.velwebsolutions.mildcrowd.chatcrypto.ChatCrypto
+import de.velwebsolutions.mildcrowd.core.model.Me
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+
+/** Everything a chat screen needs: the API, the in-memory vault, the crypto, the device secret store and who is signed in. */
+class ChatContext(
+    val repository: ChatRepository,
+    val vault: ChatVault,
+    val crypto: ChatCrypto,
+    val secrets: DeviceSecretStore,
+    val preferences: ChatPreferences,
+    val me: Me,
+    /** Picked and recorded files, and the decrypted ones on screen. */
+    val media: ChatMedia,
+    /** The label of this device in the device lists (iOS: "iPhone (Mildcrowd-App)"). */
+    val deviceLabel: String = DEFAULT_DEVICE_LABEL,
+    /** Where Argon2id and the other expensive crypto runs (iOS: a detached task). */
+    val cryptoDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    /** Voice messages as text, on the device only ([AndroidVoiceTranscriber]). */
+    val transcriber: VoiceTranscriber = NoTranscriber,
+    /** The chat look's settings and own photos on this device ([ChatLook]). */
+    val lookStore: LookStore,
+    val lookPhotos: LookPhotos
+) {
+    /** The signed-in member's id as a string, as in all crypto objects. */
+    val userId: String get() = vault.userId
+
+    /** False for read-only accounts (trial ended, no membership): reading only, no new chats or sending. */
+    val canParticipate: Boolean get() = me.canParticipate
+
+    val keyring: ChatKeyring get() = ChatKeyring(this)
+
+    val devices: ChatDevices get() = ChatDevices(this)
+
+    /** Backgrounds and „Effekte abspielen“ of the signed-in member on this device. */
+    val look: ChatLook get() = ChatLook(lookStore, lookPhotos, userId)
+
+    companion object {
+        const val DEFAULT_DEVICE_LABEL = "Android (Mildcrowd-App)"
+    }
+}

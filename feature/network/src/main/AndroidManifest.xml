@@ -11,7 +11,7 @@
     <application>
         <!-- Hands the camera app a file in the cache to write the photo to (own class, so it never clashes). -->
         <provider
-            android:name="de.velwebsolutions.oasis.network.ui.components.CameraFileProvider"
+            android:name="de.velwebsolutions.mildcrowd.network.ui.components.CameraFileProvider"
             android:authorities="${applicationId}.network.camera"
             android:exported="false"
             android:grantUriPermissions="true">
