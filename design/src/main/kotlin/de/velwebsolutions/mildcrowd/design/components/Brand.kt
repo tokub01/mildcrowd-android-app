@@ -18,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -46,8 +45,9 @@ import de.velwebsolutions.mildcrowd.design.theme.MildcrowdRadius
 import de.velwebsolutions.mildcrowd.design.theme.MildcrowdType
 
 /**
- * The Mildcrowd logo like `x-mildcrowd.logo`: the sign – a lowercase "m" made of two people, white on a rounded tile in the
- * accent colour – with the word mark "mildcrowd" next to it. [size] is the sign, the word mark follows at 65 % of it.
+ * The Mildcrowd logo like `x-mildcrowd.logo`: the sign – a lowercase "m" made of two people of the same size standing
+ * shoulder to shoulder, the left one in front in the text colour, the right one in coral – with the word mark
+ * "mildcrowd" next to it. [size] is the sign, the word mark follows at 65 % of it.
  */
 @Composable
 fun MildcrowdLogo(modifier: Modifier = Modifier, size: Dp = 38.dp, wordmark: Boolean = true) {
@@ -69,27 +69,24 @@ fun MildcrowdLogo(modifier: Modifier = Modifier, size: Dp = 38.dp, wordmark: Boo
     }
 }
 
-/** The accent blue of the tile (`sun` in light mode): the sign keeps its colours in dark mode, like on the web. */
-private val SignTile = Color(0xFF5560E0)
+/** The coral of the person behind: the same in dark mode, like on the web. */
+private val Coral = Color(0xFFFF8257)
 
-/** The sign of the logo, drawn in the web SVG's 64 × 64 grid. */
+/** The sign of the logo, drawn in the web SVG's 64 × 64 grid: the person behind first, then the one in front. */
 @Composable
 private fun LogoSign(modifier: Modifier) {
+    val front = MildcrowdColors.Night
     Canvas(modifier) {
         val unit = size.width / 64f
-        drawRoundRect(SignTile, cornerRadius = CornerRadius(15f * unit))
-        // Two arches that share the middle leg: the bodies of the two people.
-        val bodies = Path().apply {
-            listOf(17.48f, 32f).forEach { left ->
-                moveTo(left * unit, 47.18f * unit)
-                lineTo(left * unit, 35.3f * unit)
-                arcTo(Rect(center = Offset((left + 7.26f) * unit, 35.3f * unit), radius = 7.26f * unit), 180f, 180f, forceMoveTo = false)
-                lineTo((left + 14.52f) * unit, 47.18f * unit)
+        listOf(32f to Coral, 13f to front).forEach { (left, colour) ->
+            val person = Path().apply {
+                moveTo(left * unit, 51f * unit)
+                lineTo(left * unit, 35f * unit)
+                arcTo(Rect(center = Offset((left + 9.5f) * unit, 35f * unit), radius = 9.5f * unit), 180f, 180f, forceMoveTo = false)
+                lineTo((left + 19f) * unit, 51f * unit)
             }
-        }
-        drawPath(bodies, Color.White, style = Stroke(width = 5.94f * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        listOf(24.74f, 39.26f).forEach { centre ->
-            drawCircle(Color.White, radius = 4.29f * unit, center = Offset(centre * unit, 18.14f * unit))
+            drawPath(person, colour, style = Stroke(width = 8f * unit, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawCircle(colour, radius = 6f * unit, center = Offset((left + 9.5f) * unit, 13.5f * unit))
         }
     }
 }
