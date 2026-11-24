@@ -732,9 +732,12 @@ private fun CoveredImage(image: Post.Image, modifier: Modifier, reveal: () -> Un
             fullWidth = false,
             modifier = Modifier.semantics { contentDescription = "Bild anzeigen: ${image.alt}" }
         )
-        UnderlinedLink("Einstellung ändern", {
-            navigator.open(AccountRoute.Privacy)
-        }, style = MildcrowdType.Caption, color = MildcrowdColors.Ink2)
+        UnderlinedLink(
+            "Einstellung ändern",
+            { navigator.open(AccountRoute.Privacy) },
+            style = MildcrowdType.Caption,
+            color = MildcrowdColors.Ink2
+        )
     }
 }
 
