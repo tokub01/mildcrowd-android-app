@@ -1,0 +1,452 @@
+package de.velwebsolutions.mildcrowd.network.ui.components
+
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.UnfoldMore
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import de.velwebsolutions.mildcrowd.design.components.LocalApiClient
+import de.velwebsolutions.mildcrowd.design.components.LocalScreenChrome
+import de.velwebsolutions.mildcrowd.design.navigation.AppRoute
+import de.velwebsolutions.mildcrowd.design.navigation.LocalNavigator
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdColors
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdRadius
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdType
+import de.velwebsolutions.mildcrowd.network.api.Choice
+import kotlinx.coroutines.launch
+
+/** The readable width of a page, like the web's column. */
+private val PageWidth = 720.dp
+
+/**
+ * A scrolling page in the web's layout: sand background, 16 dp gutters, readable width, 20 dp between blocks and pull
+ * to refresh when [onRefresh] is set. Blocks are added with [block]; feeds with `feedSection`.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NetworkPage(
+    modifier: Modifier = Modifier,
+    state: LazyListState = rememberLazyListState(),
+    onRefresh: (suspend () -> Unit)? = null,
+    /** Extra room below the last block, so a floating button does not cover it. */
+    bottomInset: Dp = 0.dp,
+    content: LazyListScope.() -> Unit
+) {
+    val list = @Composable {
+        LazyColumn(
+            modifier = modifier.fillMaxSize().background(MildcrowdColors.Sand).testTag("network.page"),
+            state = state,
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomInset),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            content = content
+        )
+    }
+    if (onRefresh == null) {
+        list()
+    } else {
+        val scope = rememberCoroutineScope()
+        var refreshing by remember { mutableStateOf(false) }
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = {
+                scope.launch {
+                    refreshing = true
+                    try {
+                        onRefresh()
+                    } finally {
+                        refreshing = false
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        ) { list() }
+    }
+}
+
+/** The room a [ComposeFab] needs below the last block of its page. */
+val FabInset = 72.dp
+
+/**
+ * "Post schreiben" – the main action of the Start and a crowd (iOS: the composer entry and the crowd's toolbar
+ * button) as Android's floating button, bottom right. It shows its label at the top of the page and shrinks to the pen
+ * while the page is scrolled.
+ */
+@Composable
+fun BoxScope.ComposeFab(
+    listState: LazyListState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** What TalkBack reads ("Post in … schreiben" in a crowd). */
+    description: String = "Post schreiben"
+) {
+    val expanded by remember(listState) { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
+    ExtendedFloatingActionButton(
+        onClick = onClick,
+        expanded = expanded,
+        icon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+        text = { Text("Post schreiben", style = MildcrowdType.Button) },
+        containerColor = MildcrowdColors.Night,
+        contentColor = MildcrowdColors.OnNight,
+        modifier = modifier
+            .align(Alignment.BottomEnd)
+            .padding(16.dp)
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+                onClick {
+                    onClick()
+                    true
+                }
+            }
+    )
+}
+
+/** One block of a [NetworkPage] at the page's readable width. */
+fun LazyListScope.block(key: Any? = null, contentType: Any? = null, content: @Composable ColumnScope.() -> Unit) {
+    item(key = key, contentType = contentType) {
+        Column(Modifier.widthIn(max = PageWidth).fillMaxWidth(), content = content)
+    }
+}
+
+/** A section heading inside a page ("Posts", "Antworten"): Manrope 800 at 21 like the web's `h2`. */
+@Composable
+fun SectionTitle(text: String, modifier: Modifier = Modifier, onNight: Boolean = false) {
+    Text(
+        text,
+        style = MildcrowdType.figure(21),
+        color = if (onNight) MildcrowdColors.OnNight else MildcrowdColors.Night,
+        modifier = modifier.semantics { heading() }
+    )
+}
+
+/** An underlined link at the end of a side card ("Alle Crowds", "Zur Suche"), like the web's `o-link`. */
+@Composable
+fun TextLink(title: String, route: AppRoute, modifier: Modifier = Modifier) {
+    val navigator = LocalNavigator.current
+    Text(
+        title,
+        style = MildcrowdType.SmallBold.copy(textDecoration = TextDecoration.Underline),
+        color = MildcrowdColors.SpringText,
+        modifier = modifier
+            .defaultMinSize(minHeight = 44.dp)
+            .clickable(role = Role.Button) { navigator.open(route) }
+            .padding(vertical = 12.dp)
+    )
+}
+
+/** An underlined inline link in body text that opens a route. */
+@Composable
+fun UnderlinedLink(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MildcrowdType.Body,
+    color: Color = MildcrowdColors.Night
+) {
+    Text(
+        text,
+        style = style.copy(textDecoration = TextDecoration.Underline),
+        color = color,
+        modifier = modifier.defaultMinSize(minHeight = 44.dp).clickable(role = Role.Button, onClick = onClick).padding(vertical = 10.dp)
+    )
+}
+
+/** The look of [OnNightButton]: a light pill with night text, or a light outline. */
+enum class OnNightKind { Filled, Outline }
+
+/**
+ * Buttons on night surfaces (host card, the end of Durchblättern, "Nur für dich"): a light pill with night text, or a
+ * light outline – the web's light buttons on `bg-night`.
+ */
+@Composable
+fun OnNightButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, kind: OnNightKind = OnNightKind.Filled) {
+    Box(
+        modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(CircleShape)
+            .background(if (kind == OnNightKind.Filled) MildcrowdColors.OnNight else Color.Transparent, CircleShape)
+            .then(
+                if (kind == OnNightKind.Outline) {
+                    Modifier.border(BorderStroke(1.5.dp, MildcrowdColors.OnNight2), CircleShape)
+                } else {
+                    Modifier
+                }
+            )
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, style = MildcrowdType.Button, color = if (kind == OnNightKind.Filled) MildcrowdColors.Night else MildcrowdColors.OnNight)
+    }
+}
+
+/** A menu picker (iOS `Picker` with `.menu` style): the chosen label with a chevron, the choices in a dropdown. */
+@Composable
+fun ChoiceMenu(label: String, choices: List<Choice>, selection: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
+    Box(modifier) {
+        Row(
+            Modifier
+                .defaultMinSize(minHeight = 44.dp)
+                .clip(RoundedCornerShape(MildcrowdRadius.CHIP.dp))
+                .clickable(role = Role.DropdownList, onClickLabel = label) { open = true }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                choices.firstOrNull {
+                    it.value == selection
+                }?.label ?: selection,
+                style = MildcrowdType.Body,
+                color = MildcrowdColors.Night
+            )
+            Icon(Icons.Outlined.UnfoldMore, contentDescription = null, tint = MildcrowdColors.Night, modifier = Modifier.size(18.dp))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = MildcrowdColors.Paper) {
+            choices.forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(choice.label, style = MildcrowdType.Body, color = MildcrowdColors.Ink) },
+                    onClick = {
+                        open = false
+                        onSelect(choice.value)
+                    }
+                )
+            }
+        }
+    }
+}
+
+/** An inline list of radio choices (iOS `Picker` with `.inline` style). */
+@Composable
+fun ChoiceList(choices: List<Choice>, selection: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        choices.forEach { choice ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .selectable(selected = choice.value == selection, role = Role.RadioButton) { onSelect(choice.value) }
+                    .defaultMinSize(minHeight = 44.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = choice.value == selection,
+                    onClick = null,
+                    colors = RadioButtonDefaults.colors(selectedColor = MildcrowdColors.Night, unselectedColor = MildcrowdColors.FieldLine)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(choice.label, style = MildcrowdType.Body, color = MildcrowdColors.Ink)
+            }
+        }
+    }
+}
+
+/** A box that opens and closes (iOS `DisclosureGroup`): "Frühere Fassungen", "Hausregeln dieser Crowd". */
+@Composable
+fun Disclosure(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    border: Color = MildcrowdColors.PaperLine,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val shape = RoundedCornerShape(MildcrowdRadius.S.dp)
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(MildcrowdColors.Paper, shape)
+            .border(1.dp, border, shape)
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 44.dp)
+                .clickable(role = Role.Button, onClick = onToggle),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(title, style = MildcrowdType.BodyBold, color = MildcrowdColors.Night, modifier = Modifier.weight(1f))
+            Icon(
+                if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                contentDescription = if (expanded) "Zuklappen" else "Aufklappen",
+                tint = MildcrowdColors.Night
+            )
+        }
+        AnimatedVisibility(expanded) {
+            Column(Modifier.padding(top = 8.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        }
+    }
+}
+
+/** A destructive question before an action (iOS `confirmationDialog`) as a Material dialog, with "Abbrechen". */
+@Composable
+fun ConfirmDialog(
+    title: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    message: String? = null,
+    destructive: Boolean = true
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MildcrowdColors.Paper,
+        title = { Text(title, style = MildcrowdType.heading(), color = MildcrowdColors.Night) },
+        text = message?.let { { Text(it, style = MildcrowdType.Body, color = MildcrowdColors.Ink2) } },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                    onConfirm()
+                },
+                modifier = Modifier.testTag("dialog.confirm")
+            ) {
+                Text(
+                    confirmLabel,
+                    style = MildcrowdType.BodyBold,
+                    color = if (destructive) MildcrowdColors.Danger else MildcrowdColors.Night
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("dialog.cancel")) {
+                Text("Abbrechen", style = MildcrowdType.BodyBold, color = MildcrowdColors.Night)
+            }
+        }
+    )
+}
+
+/**
+ * Asks before a screen with unsaved changes is left: while [enabled], the system back gesture (also predictive back) and
+ * the bar's back arrow call [onAttempt] instead of leaving (iOS hides the back button and stops the swipe instead).
+ */
+@Composable
+fun LeaveGuard(enabled: Boolean, onAttempt: () -> Unit, content: @Composable () -> Unit) {
+    BackHandler(enabled = enabled, onBack = onAttempt)
+    val chrome = LocalScreenChrome.current
+    val guarded = if (enabled && chrome.onBack != null) chrome.copy(onBack = onAttempt) else chrome
+    CompositionLocalProvider(LocalScreenChrome provides guarded, content = content)
+}
+
+/** A paper card with the web's large radius (`rounded-[24px]`), optionally outlined. */
+@Composable
+fun PaperBox(
+    modifier: Modifier = Modifier,
+    padding: Int = 20,
+    radius: Int = MildcrowdRadius.M,
+    border: Color? = null,
+    spacing: Int = 12,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val shape = RoundedCornerShape(radius.dp)
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(MildcrowdColors.Paper, shape)
+            .then(if (border != null) Modifier.border(1.dp, border, shape) else Modifier)
+            .padding(padding.dp),
+        verticalArrangement = Arrangement.spacedBy(spacing.dp),
+        content = content
+    )
+}
+
+/** A row of buttons that wraps on narrow screens (iOS `FlowLayout`). */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun ButtonFlow(modifier: Modifier = Modifier, spacing: Int = 8, content: @Composable RowScope.() -> Unit) {
+    androidx.compose.foundation.layout.FlowRow(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(spacing.dp),
+        verticalArrangement = Arrangement.spacedBy(spacing.dp),
+        content = { content() }
+    )
+}
+
+/** Shares a web address with the system sheet (iOS `ShareLink`). */
+fun share(context: Context, url: String) {
+    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, url)
+    runCatching { context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+}
+
+/** Copies text (invitation links). */
+fun copyToClipboard(context: Context, label: String, text: String) {
+    context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(label, text))
+}
+
+/** The server root of the running app (for mentions, topics and the tone rules link). */
+@Composable
+fun rememberBaseUrl(): okhttp3.HttpUrl? = LocalApiClient.current?.baseUrl

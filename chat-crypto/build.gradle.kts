@@ -1,9 +1,9 @@
 plugins {
-    alias(libs.plugins.oasis.jvm.library)
+    alias(libs.plugins.mildcrowd.jvm.library)
     `java-test-fixtures`
 }
 
-// End-to-end chat crypto, byte-compatible with resources/js/chat in the Laravel project and OasisChatCrypto on iOS.
+// End-to-end chat crypto, byte-compatible with resources/js/chat in the Laravel project and MildcrowdChatCrypto on iOS.
 // The libsodium binding is passed in ([Sodium]); the tests use lazysodium-java on the JVM (test fixture `JvmSodium`,
 // also used by the unit tests of :feature:chat), the app lazysodium-android.
 dependencies {

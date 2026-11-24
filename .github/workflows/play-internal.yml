@@ -7,7 +7,7 @@
 #   ANDROID_UPLOAD_KEY_ALIAS          the key alias (mildcrowd-upload)
 #   ANDROID_UPLOAD_KEY_PASSWORD       the key password (key_password)
 #   PLAY_SERVICE_ACCOUNT_JSON         the JSON key of the Google Cloud service account invited in the Play Console
-#   STAGING_GATE_KEY                  the staging gate password (OASIS_STAGING_PASSWORD on the server)
+#   STAGING_GATE_KEY                  the staging gate password (MILDCROWD_STAGING_PASSWORD on the server)
 #   GOOGLE_SERVICES_JSON_B64          optional: app/google-services.json of Firebase project mildcrowd, base64 (push)
 name: Play internal test
 
@@ -87,7 +87,7 @@ jobs:
           ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
           ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
           PLAY_SERVICE_ACCOUNT_JSON: ${{ runner.temp }}/play/service-account.json
-          OASIS_GATE_KEY: ${{ secrets.STAGING_GATE_KEY }}
+          MILDCROWD_GATE_KEY: ${{ secrets.STAGING_GATE_KEY }}
         run: ./gradlew :app:publishPlayBundle --no-configuration-cache
 
       - name: Remove the keys

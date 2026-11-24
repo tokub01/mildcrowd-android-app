@@ -1,0 +1,880 @@
+package de.velwebsolutions.mildcrowd.staff
+
+import android.media.MediaPlayer
+import android.view.View
+import android.view.ViewGroup
+import android.widget.VideoView
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isToggleable
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import coil3.ImageLoader
+import coil3.annotation.ExperimentalCoilApi
+import coil3.compose.AsyncImagePainter
+import coil3.compose.AsyncImagePreviewHandler
+import coil3.compose.LocalAsyncImagePreviewHandler
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import de.velwebsolutions.mildcrowd.core.model.Loadable
+import de.velwebsolutions.mildcrowd.core.network.ApiError
+import de.velwebsolutions.mildcrowd.design.navigation.StaffRoute
+import de.velwebsolutions.mildcrowd.staff.api.Labelled
+import de.velwebsolutions.mildcrowd.staff.api.ModerationCaseDetail
+import de.velwebsolutions.mildcrowd.staff.api.QueueFilter
+import de.velwebsolutions.mildcrowd.staff.api.StatementOfReasons
+import de.velwebsolutions.mildcrowd.staff.data.StaffFiles
+import de.velwebsolutions.mildcrowd.staff.ui.components.LoadMoreButton
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.CaseDetailActions
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.CaseDetailContent
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.CaseDetailScreen
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.CaseDetailUiState
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.CaseDetailViewModel
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.ComplaintReviewContent
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.ComplaintReviewScreen
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.ComplaintReviewUiState
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.ComplaintReviewViewModel
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.EVIDENCE_KINDS
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.LOCKED_ATTACHMENT
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.ModerationOverviewContent
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.ModerationOverviewScreen
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.ModerationOverviewUiState
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.ModerationOverviewViewModel
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.REPORTED_ATTACHMENT_NOTE
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.REPORTED_FILE_WARNING
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.ReportedAttachments
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.RolesScreen
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.RolesViewModel
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.SuspensionsContent
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.SuspensionsScreen
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.SuspensionsUiState
+import de.velwebsolutions.mildcrowd.staff.ui.moderation.SuspensionsViewModel
+import java.time.Instant
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+/** The moderation screens in each of their states, with a Roborazzi screenshot of each. */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "w411dp-h891dp-xxhdpi")
+class ModerationUiTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    private val ui = StaffUiHarness(compose)
+    private val repository = FakeStaffRepository()
+    private val files = StaffFiles(ui.context.cacheDir)
+    private val statement = StatementOfReasons("no_action", "community_rules", "Regel 1", "Tatsachen", "Begründung")
+
+    @Test
+    fun `the start page with figures, areas, queue and activity`() {
+        val overview = Decoded.overview
+        val filters = mutableListOf<QueueFilter>()
+        var state by mutableStateOf(ModerationOverviewUiState(Loadable.Loaded(overview), Decoded.cases.data, hasMore = true))
+        var more = 0
+        ui.show { ModerationOverviewContent(state, {}, { filters += it }, { more++ }) }
+        // Since 6 November 2026 no lock waits for a decision: the start page has no banner about provisional locks.
+        compose.onNodeWithText("vorläufige Sperre", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("warten auf eine Entscheidung", substring = true).assertDoesNotExist()
+        ui.shot("moderation")
+        compose.onNodeWithTag("staff.nav.suspensions").performScrollTo().performClick()
+        assertEquals(StaffRoute.Suspensions, ui.top)
+        compose.onNodeWithText("Ohne Zuständigkeit").performScrollTo().performClick()
+        assertEquals(QueueFilter(status = "open"), filters.last())
+        compose.onNodeWithTag("staff.nav.payments").performScrollTo().performClick()
+        assertEquals(StaffRoute.AdminPayments, ui.top)
+        compose.onNodeWithTag("queue.status").performScrollTo().performClick()
+        compose.onAllNodesWithText("Offen")[0].performClick()
+        compose.onAllNodes(hasSetTextAction())[0].performScrollTo().performTextInput("drop")
+        assertEquals("drop", filters.last().search)
+        compose.onNode(isToggleable()).performScrollTo().performClick()
+        assertTrue(filters.last().mine)
+        compose.waitForIdle()
+        assertEquals("further pages come only when asked for", 0, more)
+        compose.onNodeWithTag("queue.more").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(1, more)
+        compose.onAllNodesWithText(
+            "Fall #${overview.activity.first().caseId} · ${overview.activity.first().type.label}",
+            substring = true
+        )[0]
+            .performScrollTo().performClick()
+        assertEquals(StaffRoute.ModerationCase(overview.activity.first().caseId), ui.top)
+        ui.shot("moderation-queue")
+
+        state = ModerationOverviewUiState(Loadable.Loaded(overview.copy(activity = emptyList())), emptyList())
+        compose.onNodeWithText("Keine Fälle für diese Auswahl. Gute Arbeit.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Noch keine Aktivität.").performScrollTo().assertIsDisplayed()
+        ui.shot("moderation-empty")
+    }
+
+    @Test
+    fun `the button for further pages loads one only when tapped`() {
+        var more = 0
+        ui.show { LoadMoreButton("Weitere Fälle laden", { more++ }) }
+        compose.waitForIdle()
+        assertEquals(0, more)
+        compose.onNodeWithText("Weitere Fälle laden").performClick()
+        compose.waitForIdle()
+        assertEquals(1, more)
+    }
+
+    @Test
+    fun `the start page for a moderator without admin pages and with nothing waiting`() {
+        val overview = Decoded.overview.let {
+            it.copy(navigation = it.navigation.copy(canManageRoles = false, canAdministrate = false))
+        }
+        val viewModel = ModerationOverviewViewModel(repository.apply { this.overview = Result.success(overview) })
+        ui.show { ModerationOverviewScreen(viewModel) }
+        compose.onNodeWithTag("staff.nav.roles").assertDoesNotExist()
+        compose.onNodeWithTag("staff.nav.admin").assertDoesNotExist()
+        compose.onNodeWithTag("staff.nav.suspensions").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `staff without two-factor and members without access are told why`() {
+        var state by mutableStateOf(ModerationOverviewUiState(Loadable.Failed(ApiError.Forbidden("Zwei-Faktor fehlt."))))
+        ui.show { ModerationOverviewContent(state, {}, {}, {}) }
+        ui.shot("moderation-twofactor")
+        state = ModerationOverviewUiState(Loadable.Failed(ApiError.Forbidden("Nein.")))
+        compose.onNodeWithText("Kein Zugang").assertIsDisplayed()
+        ui.shot("moderation-forbidden")
+        state = ModerationOverviewUiState(Loadable.Failed(ApiError.Server(500, "Server Error")))
+        compose.onNodeWithText("Noch einmal versuchen").assertIsDisplayed()
+        state = ModerationOverviewUiState(Loadable.Loading)
+        ui.shot("moderation-loading")
+    }
+
+    @Test
+    fun `a reported drop with its automated check, decisions, complaints and history`() {
+        val check = Decoded.caseCheck.copy(
+            decisions = Decoded.caseEscalated.decisions,
+            complaints = Decoded.caseDetail.complaints.ifEmpty { Decoded.caseEscalated.complaints }
+        )
+        var assigned = 0
+        val chosen = mutableListOf<Int>()
+        ui.show {
+            CaseDetailContent(
+                check.id,
+                CaseDetailUiState(Loadable.Loaded(check), fieldErrors = mapOf("assigned_to" to "Bitte jemanden wählen.")),
+                CaseDetailActions(onAssign = { assigned++ }, onSelectAssignee = { chosen += it })
+            )
+        }
+        compose.onNodeWithText("Einschätzung").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Zurückgehalten seit", substring = true).performScrollTo().assertIsDisplayed()
+        ui.shot("case-check")
+        compose.onNodeWithText("Bitte jemanden wählen.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("case.assignee").performScrollTo().performClick()
+        compose.onNodeWithText(check.staff.last().displayName, substring = true).performClick()
+        assertEquals(listOf(check.staff.last().id), chosen)
+        compose.onNodeWithTag("case.assign").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(1, assigned)
+        compose.onNodeWithText("Der Verlauf lässt sich nicht ändern oder löschen.").performScrollTo().assertIsDisplayed()
+        ui.shot("case-history")
+    }
+
+    @Test
+    fun `a chat report shows the reported plain text and the link opens in the app`() {
+        val chat = Decoded.caseDetail.let {
+            it.copy(
+                report = it.report.copy(kind = "chat_report", plaintext = "Hallo", reason = null),
+                subjectUser = null,
+                subjectUrl = "http://localhost/@mira"
+            )
+        }
+        ui.show { CaseDetailContent(chat.id, CaseDetailUiState(Loadable.Loaded(chat)), CaseDetailActions()) }
+        compose.onNodeWithText("Gemeldeter Klartext").assertIsDisplayed()
+        compose.onNodeWithText("Nicht zugeordnet").performScrollTo().assertIsDisplayed()
+        ui.shot("case-chat")
+        compose.onNodeWithText("http://localhost/@mira").performClick()
+        assertNotNull(ui.top ?: ui.web.lastOrNull())
+    }
+
+    @Test
+    fun `a reported chat message shows its photo, voice message and video with the note`() {
+        val chat = Decoded.caseChat
+        val loaded = mutableListOf<Int>()
+        var state by mutableStateOf(CaseDetailUiState(Loadable.Loaded(chat), failedAttachments = setOf(2)))
+        ui.show { CaseDetailContent(chat.id, state, CaseDetailActions(onLoadAttachment = { loaded += it })) }
+        compose.onNodeWithText("Schau mal").assertIsDisplayed()
+        compose.onNodeWithTag("case.attachment.image").assertExists()
+        compose.onAllNodesWithText(REPORTED_ATTACHMENT_NOTE).assertCountEquals(4)
+        compose.onNodeWithText("Sprachnachricht laden").performScrollTo().performClick()
+        compose.onNodeWithText("Erneut laden").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(1, 2), loaded)
+        ui.shot("case-chat-attachments")
+
+        val voice = files.reportedAttachment(chat.id, 1, "ID3".toByteArray())
+        val video = files.reportedAttachment(chat.id, 2, ByteArray(0))
+        state = state.copy(attachmentFiles = mapOf(1 to voice, 2 to video), failedAttachments = emptySet())
+        compose.onNodeWithTag("case.attachment.player").performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("Sprachnachricht abspielen").performScrollTo().performClick()
+        compose.onNodeWithText("Die Sprachnachricht lässt sich nicht abspielen.").performScrollTo().assertIsDisplayed()
+        failVideo()
+        compose.onNodeWithText("Das Video lässt sich nicht abspielen.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a reported file is loaded into the cache and only opened in another app`() {
+        clearFileProviders()
+        val chat = Decoded.caseChat
+        val loaded = mutableListOf<Int>()
+        var state by mutableStateOf(CaseDetailUiState(Loadable.Loaded(chat)))
+        val nameless = chat.report.attachments.last().copy(name = null)
+        var alone by mutableStateOf(false)
+        ui.show {
+            if (alone) {
+                ReportedAttachments(listOf(nameless), emptyMap(), emptySet()) {}
+            } else {
+                CaseDetailContent(chat.id, state, CaseDetailActions(onLoadAttachment = { loaded += it }))
+            }
+        }
+        compose.onNodeWithText("Anhang 4: Rechnung.pdf").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(REPORTED_FILE_WARNING).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Datei laden").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(3), loaded)
+        state = state.copy(failedAttachments = setOf(3))
+        compose.onAllNodesWithText("Erneut laden").assertCountEquals(1)
+
+        val pdf = files.reportedAttachment(chat.id, 3, "%PDF".toByteArray(), "Rechnung.pdf")
+        state = state.copy(attachmentFiles = mapOf(3 to pdf), failedAttachments = emptySet())
+        ui.shot("case-chat-file")
+        compose.onNodeWithTag("case.attachment.open").performScrollTo().performClick()
+        compose.onNodeWithText("Auf diesem Gerät ist keine App, die diese Datei öffnen kann.").assertDoesNotExist()
+        shadowOf(androidx.test.core.app.ApplicationProvider.getApplicationContext<android.app.Application>()).checkActivities(true)
+        compose.onNodeWithTag("case.attachment.open").performScrollTo().performClick()
+        compose.onNodeWithText("Auf diesem Gerät ist keine App, die diese Datei öffnen kann.").performScrollTo().assertIsDisplayed()
+
+        alone = true
+        compose.onNodeWithText("Anhang 1: Datei").assertExists()
+        // FileProvider remembers its folders per process; every Robolectric test has its own cache folder.
+        clearFileProviders()
+    }
+
+    @OptIn(ExperimentalCoilApi::class)
+    @Test
+    fun `a reported photo is never written to the image loader's disk cache`() {
+        val photo = Decoded.caseChat.report.attachments.first()
+        val requests = mutableListOf<ImageRequest>()
+        // In inspection mode Coil hands each request to the preview handler instead of loading it.
+        ui.show {
+            CompositionLocalProvider(
+                LocalInspectionMode provides true,
+                LocalAsyncImagePreviewHandler provides object : AsyncImagePreviewHandler {
+                    override suspend fun handle(imageLoader: ImageLoader, request: ImageRequest): AsyncImagePainter.State {
+                        requests += request
+                        return AsyncImagePainter.State.Empty
+                    }
+                }
+            ) { ReportedAttachments(listOf(photo), emptyMap(), emptySet()) {} }
+        }
+        compose.waitForIdle()
+        assertEquals(photo.url, requests.last().data)
+        assertEquals("the server sends the decrypted copy with no-store", CachePolicy.DISABLED, requests.last().diskCachePolicy)
+    }
+
+    private fun clearFileProviders() = androidx.core.content.FileProvider::class.java.getDeclaredField("sCache").apply {
+        isAccessible = true
+    }.let {
+        (it.get(null) as MutableMap<*, *>).clear()
+    }
+
+    /** Lets the platform video view report a file it cannot play. */
+    private fun failVideo() {
+        compose.waitForIdle()
+        val global = Class.forName("android.view.WindowManagerGlobal")
+        val instance = global.getMethod("getInstance").invoke(null)
+        val roots = global.getDeclaredField("mViews").apply { isAccessible = true }.get(instance) as List<*>
+        fun find(view: View): VideoView? = view as? VideoView ?: (view as? ViewGroup)?.let { group ->
+            (0 until group.childCount).firstNotNullOfOrNull { find(group.getChildAt(it)) }
+        }
+        val player = roots.filterIsInstance<View>().firstNotNullOf { find(it) }
+        shadowOf(player).onErrorListener.onError(MediaPlayer(), 1, 0)
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `escalating asks first, and an escalated case shows its steps for admins`() {
+        val escalated = mutableListOf<String>()
+        var state by mutableStateOf(CaseDetailUiState(Loadable.Loaded(Decoded.caseDetail)))
+        var deleted = 0
+        var lifted = 0
+        var archived = 0
+        var reported = 0
+        ui.show {
+            CaseDetailContent(
+                2,
+                state,
+                CaseDetailActions(
+                    onEscalate = { escalated += it },
+                    onDeleteEvidence = { deleted++ },
+                    onLiftQuarantine = { lifted++ },
+                    onPrepareArchive = { archived++ },
+                    onRecordReport = { reported++ }
+                )
+            )
+        }
+        val option = Decoded.caseDetail.escalationOptions.first()
+        compose.onNodeWithTag("case.escalate.${option.value}").performScrollTo().performClick()
+        ui.shotDialog("case-escalate")
+        compose.onNodeWithTag("case.escalate.confirm").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(option.value), escalated)
+        compose.onNodeWithTag("case.escalate.${option.value}").performScrollTo().performClick()
+        compose.onNodeWithText("Abbrechen").performClick()
+        assertEquals(1, escalated.size)
+
+        state = CaseDetailUiState(Loadable.Loaded(Decoded.caseEscalated), reference = "LKA", fieldErrors = mapOf("reference" to "Fehlt."))
+        compose.onNodeWithTag("case.escalated").performScrollTo().assertIsDisplayed()
+        ui.shot("case-escalated")
+        compose.onNodeWithTag("case.recordReport").performScrollTo().performClick()
+        compose.onNodeWithTag("case.evidence.download").performScrollTo().performClick()
+        compose.onNodeWithText("Beweise löschen").performScrollTo().performClick()
+        compose.onAllNodesWithText("Beweise löschen")[1].performClick()
+        compose.onNodeWithText("Quarantäne aufheben").performScrollTo().performClick()
+        compose.onAllNodesWithText("Quarantäne aufheben")[1].performClick()
+        compose.waitForIdle()
+        assertEquals(listOf(1, 1, 1, 1), listOf(reported, archived, deleted, lifted))
+
+        val archive = files.evidenceArchive(4, "PK".toByteArray())
+        val reportedEscalation = Decoded.caseEscalated.escalation!!.copy(
+            authorityReportedAt = Instant.parse("2026-10-23T10:00:00Z"),
+            authorityReference = "LKA 1/26",
+            authorityContact = "Polizei",
+            escalatedByName = "Mo",
+            quarantined = false
+        )
+        state = CaseDetailUiState(Loadable.Loaded(Decoded.caseEscalated.copy(escalation = reportedEscalation)), archiveFile = archive)
+        compose.onNodeWithText("Vermerkt am", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("case.evidence.share").performScrollTo().performClick()
+        assertNotNull(shadowOf(ui.context).nextStartedActivity)
+        compose.onNodeWithText("Quarantäne aufheben").assertDoesNotExist()
+
+        val withoutEvidence = reportedEscalation.copy(evidence = emptyList())
+        state = CaseDetailUiState(
+            Loadable.Loaded(
+                Decoded.caseEscalated.copy(escalation = withoutEvidence, can = Decoded.caseEscalated.can.copy(administrate = false))
+            )
+        )
+        compose.onNodeWithText("Keine Beweise (mehr) gespeichert.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Beweise löschen").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a decision is confirmed with its summary before it goes out`() {
+        var decided = 0
+        ui.show {
+            CaseDetailContent(
+                2,
+                CaseDetailUiState(Loadable.Loaded(Decoded.caseDetail), statement = statement),
+                CaseDetailActions(onDecide = {
+                    decided++
+                })
+            )
+        }
+        compose.onNodeWithTag("case.decide").performScrollTo().performClick()
+        ui.shotDialog("case-decide")
+        compose.onNodeWithText("Abbrechen").performClick()
+        assertEquals(0, decided)
+        compose.onNodeWithTag("case.decide").performScrollTo().performClick()
+        compose.onNodeWithTag("case.decide.confirm").performClick()
+        compose.waitForIdle()
+        assertEquals(1, decided)
+    }
+
+    @Test
+    fun `a measure without ground goes straight to the server`() {
+        var decided = 0
+        ui.show {
+            CaseDetailContent(
+                2,
+                CaseDetailUiState(Loadable.Loaded(Decoded.caseDetail), statement = statement.copy(ground = "")),
+                CaseDetailActions(onDecide = { decided++ })
+            )
+        }
+        compose.onNodeWithTag("case.decide").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(1, decided)
+    }
+
+    /** "Warnung" is a measure of its own with the web's hint; "Konto gesperrt" asks for the duration (Art. 17 Abs. 3 lit. a DSA). */
+    @Test
+    fun `a warning shows its hint, and a lock asks for its duration before it goes out`() {
+        val severe = Decoded.caseEscalated
+        var decided = 0
+        var state by mutableStateOf(CaseDetailUiState(Loadable.Loaded(severe), statement = statement))
+        ui.show {
+            CaseDetailContent(
+                severe.id,
+                state,
+                CaseDetailActions(onDecide = { decided++ }, onStatement = { state = state.copy(statement = it) })
+            )
+        }
+        compose.onNodeWithText("Zählt als bestätigter Verstoß.", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Sperre mit fester Dauer.", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Dauer der Sperre").assertDoesNotExist()
+        compose.onNodeWithTag("case.outcome.warning").performScrollTo().performClick()
+        assertEquals("warning", state.statement.outcome)
+        compose.onNodeWithText("Dauer der Sperre").assertDoesNotExist()
+
+        compose.onNodeWithTag("case.outcome.account_suspended").performScrollTo().performClick()
+        assertEquals("account_suspended", state.statement.outcome)
+        compose.onNodeWithText("Dauer der Sperre").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Die Sperre endet danach von selbst.", substring = true).performScrollTo().assertIsDisplayed()
+        ui.shot("case-decide-duration")
+        // Without the duration the server names what is missing: no confirmation dialog.
+        compose.onNodeWithTag("case.decide").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(1, decided)
+        compose.onNodeWithTag("case.days.7").performScrollTo().performClick()
+        assertEquals(7, state.statement.suspensionDays)
+        compose.onNodeWithTag("case.decide").performScrollTo().performClick()
+        compose.onNodeWithText("Konto gesperrt (7 Tage) · Community-Regeln. Die betroffene Person bekommt die Begründung per E-Mail.")
+            .assertIsDisplayed()
+        compose.onNodeWithTag("case.decide.confirm").performClick()
+        compose.waitForIdle()
+        assertEquals(2, decided)
+        // Another measure drops the duration.
+        compose.onNodeWithTag("case.outcome.content_removed").performScrollTo().performClick()
+        assertEquals("content_removed", state.statement.outcome)
+        assertNull(state.statement.suspensionDays)
+        compose.onNodeWithText("Dauer der Sperre").assertDoesNotExist()
+    }
+
+    /** Without a warning within the last months (and no severe case) "Konto gesperrt" cannot be chosen; the row says why. */
+    @Test
+    fun `a lock without a warning first is not available and says why`() {
+        val unwarned = Decoded.caseDetail
+        assertFalse(unwarned.suspension.allowed)
+        var chosen: StatementOfReasons? = null
+        ui.show {
+            CaseDetailContent(unwarned.id, CaseDetailUiState(Loadable.Loaded(unwarned)), CaseDetailActions(onStatement = { chosen = it }))
+        }
+        compose.onNodeWithText("Nicht wählbar. Erst nach einer Warnung:", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("case.outcome.account_suspended").assertIsNotEnabled()
+        compose.onNodeWithTag("case.outcome.account_suspended").performScrollTo().performClick()
+        assertNull("the blocked measure cannot be chosen", chosen)
+        compose.onNodeWithText("Dauer der Sperre").assertDoesNotExist()
+        ui.shot("case-lock-blocked")
+        compose.onNodeWithTag("case.outcome.warning").performScrollTo().performClick()
+        assertEquals("warning", chosen?.outcome)
+    }
+
+    /** The replacement decision of an overturned complaint takes the same duration. */
+    @Test
+    fun `an overturned complaint can replace the decision by a lock with a duration`() {
+        var state by mutableStateOf(ComplaintReviewUiState(Loadable.Loaded(Decoded.complaint), result = "overturned"))
+        var reviewed = 0
+        ui.show {
+            ComplaintReviewContent(state, {}, {}, {}, { state = state.copy(statement = it) }, { reviewed++ })
+        }
+        compose.onNodeWithTag("review.outcome.account_suspended").performScrollTo().performClick()
+        assertEquals("account_suspended", state.statement.outcome)
+        compose.onNodeWithText("Dauer der Sperre").performScrollTo().assertIsDisplayed()
+        state = state.copy(
+            statement = state.statement.copy(ground = "community_rules", ruleReference = "R", facts = "F", explanation = "E")
+        )
+        compose.onNodeWithTag("complaint.save").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals("a lock without duration goes straight to the server", 1, reviewed)
+        compose.onNodeWithTag("review.days.30").performScrollTo().performClick()
+        assertEquals(30, state.statement.suspensionDays)
+        compose.onNodeWithTag("complaint.save").performScrollTo().performClick()
+        compose.onNodeWithText("Die Entscheidung wird geändert: Konto gesperrt (30 Tage) · Community-Regeln.", substring = true)
+            .assertIsDisplayed()
+        compose.onNodeWithTag("complaint.save.confirm").performClick()
+        compose.waitForIdle()
+        assertEquals(2, reviewed)
+    }
+
+    @Test
+    fun `a case for staff who may not decide or assign`() {
+        val readOnly = Decoded.caseDetail.copy(can = Decoded.caseDetail.can.copy(decide = false, assign = false))
+        ui.show { CaseDetailContent(2, CaseDetailUiState(Loadable.Loaded(readOnly)), CaseDetailActions()) }
+        compose.onNodeWithTag("case.decide").assertDoesNotExist()
+        compose.onNodeWithTag("case.assign").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the case screen loads its case and its complaint links`() {
+        val withComplaint = Decoded.caseEscalated
+        repository.case = Result.success(withComplaint)
+        val viewModel = CaseDetailViewModel(4, repository, files)
+        ui.show { CaseDetailScreen(4, viewModel) }
+        compose.onNodeWithTag("case.status").assertIsDisplayed()
+        withComplaint.complaints.firstOrNull()?.let { complaint ->
+            compose.onNodeWithTag("case.complaint.${complaint.id}").performScrollTo().performClick()
+            assertEquals(StaffRoute.ComplaintReview(complaint.id), ui.top)
+        }
+    }
+
+    @Test
+    fun `reviewing a complaint, upheld or overturned, asks before it goes out`() {
+        var state by mutableStateOf(ComplaintReviewUiState(Loadable.Loaded(Decoded.complaint)))
+        var reviewed = 0
+        val results = mutableListOf<String>()
+        ui.show {
+            ComplaintReviewContent(state, {}, { results += it }, {}, {}, { reviewed++ })
+        }
+        ui.shot("complaint")
+        compose.onNodeWithText("← Fall #${Decoded.complaint.caseId}").performClick()
+        assertEquals(StaffRoute.ModerationCase(Decoded.complaint.caseId), ui.top)
+        compose.onNodeWithTag("complaint.result.upheld").performScrollTo().performClick()
+        assertEquals(listOf("upheld"), results)
+        compose.onNodeWithTag("complaint.save").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals("no result yet: straight to the server", 1, reviewed)
+
+        state = state.copy(result = "upheld")
+        compose.onNodeWithTag("complaint.save").performScrollTo().performClick()
+        compose.onNodeWithText("Die Entscheidung bleibt bestehen. Die Person, die widersprochen hat, bekommt die Begründung per E-Mail.")
+            .assertIsDisplayed()
+        compose.onNodeWithTag("complaint.save.confirm").performClick()
+        compose.waitForIdle()
+        assertEquals(2, reviewed)
+
+        state = state.copy(result = "overturned")
+        compose.onNodeWithText("Neue Entscheidung").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("complaint.save").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals("an overturn without measure goes straight to the server", 3, reviewed)
+        state = state.copy(statement = statement.copy(ground = ""))
+        compose.onNodeWithTag("complaint.save").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertEquals(4, reviewed)
+        state = state.copy(statement = statement)
+        compose.onNodeWithTag("complaint.save").performScrollTo().performClick()
+        ui.shotDialog("complaint-overturn")
+        compose.onNodeWithText("Die Entscheidung wird geändert", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Abbrechen").performClick()
+        assertEquals(4, reviewed)
+    }
+
+    @Test
+    fun `a reviewed complaint shows the result, someone else's waits for another reviewer`() {
+        val result = de.velwebsolutions.mildcrowd.staff.api.ComplaintDetail.Result(null, Instant.parse("2026-10-23T10:00:00Z"), null)
+        var state by mutableStateOf(ComplaintReviewUiState(Loadable.Loaded(Decoded.complaint.copy(result = result))))
+        ui.show { ComplaintReviewContent(state, {}, {}, {}, {}, {}) }
+        compose.onNodeWithTag("complaint.result").assertIsDisplayed()
+        ui.shot("complaint-result")
+        state = ComplaintReviewUiState(Loadable.Loaded(Decoded.complaint.copy(canReview = false)))
+        compose.onNodeWithTag("complaint.otherReviewer").performScrollTo().assertIsDisplayed()
+        state = ComplaintReviewUiState(Loadable.Loaded(Decoded.complaint))
+        compose.onNodeWithTag("complaint.result.upheld").assertExists()
+    }
+
+    @Test
+    fun `the complaint screen loads its complaint`() {
+        val viewModel = ComplaintReviewViewModel(1, repository)
+        ui.show { ComplaintReviewScreen(1, viewModel) }
+        compose.onNodeWithText(Decoded.complaint.reason).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `roles are changed per person, notes and refusals show at the row`() {
+        val roles = Decoded.roles
+        val first = roles.data.first()
+        repository.roles = Result.success(
+            roles.copy(
+                data = roles.data.mapIndexed { index, user ->
+                    if (index ==
+                        1
+                    ) {
+                        user.copy(note = "Betreiberkonto", editable = false)
+                    } else {
+                        user
+                    }
+                },
+                meta = de.velwebsolutions.mildcrowd.core.network.Page.Meta(nextCursor = "2")
+            )
+        )
+        val viewModel = RolesViewModel(repository)
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
+        repository.roles = Result.success(roles.copy(data = emptyList()))
+        ui.show { RolesScreen(viewModel) }
+        compose.onNodeWithText("Betreiberkonto").assertIsDisplayed()
+        ui.shot("roles")
+        compose.onNodeWithTag("roles.picker.${first.id}").performClick()
+        compose.onAllNodesWithText("Moderation")[0].performClick()
+        repository.changeRole = FakeStaffRepository.invalid("role" to "Nicht erlaubt.")
+        compose.onNodeWithTag("roles.save.${first.id}").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Nicht erlaubt.").assertIsDisplayed()
+        assertTrue("no further accounts by themselves", repository.calls.none { it.startsWith("roles 2") })
+        compose.onNodeWithTag("roles.more").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertTrue(repository.calls.any { it.startsWith("roles 2") })
+        compose.onNodeWithTag("roles.more").assertDoesNotExist()
+    }
+
+    @Test
+    fun `locks are released after confirming, ended ones are listed`() {
+        val list = Decoded.suspensions
+        val lock = list.active.first()
+        val ended = lock.copy(id = 9, endedAt = Instant.parse("2026-10-23T10:00:00Z"), resultLabel = null)
+        val replaced = list.ended.first().copy(id = 10, resultLabel = "durch eine neue Sperre ersetzt")
+        val ban = lock.copy(
+            id = 5,
+            type = "ban",
+            label = "Dauerhafte Sperre",
+            endsAt = null,
+            endsAtLabel = null,
+            caseId = null,
+            canRelease = false,
+            excerpt = null,
+            statement = null,
+            user = lock.user.copy(activeStrikes = null)
+        )
+        var state by mutableStateOf(
+            SuspensionsUiState(Loadable.Loaded(list.copy(active = list.active + ban, ended = listOf(ended, replaced) + list.ended)))
+        )
+        val released = mutableListOf<Int>()
+        ui.show { SuspensionsContent(state, {}, { released += it.id }) }
+        compose.onNodeWithText("immer durch eine menschliche Entscheidung", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Nach 3 bestätigten Verstößen innerhalb von 12 Monaten", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("vorläufig", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Wartet seit", substring = true).assertDoesNotExist()
+        // The planned end of a lock with a duration, none for the ban.
+        compose.onNodeWithText("· bis ${lock.endsAtLabel} · Verstöße 2 von 3", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Dauerhafte Sperre · seit ", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Dauerhafte Sperre · seit 22.10.2026, 17:49 Uhr · Verstöße 0 von 3").assertExists()
+        compose.onNodeWithText("Zuletzt beendet").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Dauer abgelaufen", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("durch eine neue Sperre ersetzt", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Noch keine.").performScrollTo().assertIsDisplayed()
+        ui.shot("suspensions")
+        compose.onNodeWithText("Zum Fall").performScrollTo().performClick()
+        assertEquals(StaffRoute.ModerationCase(lock.caseId!!), ui.top)
+        compose.onNodeWithTag("suspension.release.${lock.id}").performScrollTo().performClick()
+        ui.shotDialog("suspension-release")
+        compose.onNodeWithText("Abbrechen").performClick()
+        assertTrue(released.isEmpty())
+        state = SuspensionsUiState(Loadable.Loaded(list.copy(active = emptyList())))
+        compose.onNodeWithText("Gerade ist kein Konto gesperrt.").assertIsDisplayed()
+        ui.shot("suspensions-empty")
+    }
+
+    @Test
+    fun `the locks screen loads the list`() {
+        val viewModel = SuspensionsViewModel(repository)
+        ui.show { SuspensionsScreen(viewModel) }
+        compose.onNodeWithText("Es tut mir leid.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Schließen").assertDoesNotExist()
+    }
+
+    @Test
+    fun `decisions and complaints of a case, and the admin steps without evidence`() {
+        val decision = de.velwebsolutions.mildcrowd.staff.api.Decision(
+            outcome = Decoded.complaint.outcomes.first().let { Labelled(it.value, it.label) },
+            ground = Decoded.complaint.grounds.first(),
+            isComplaintReview = true,
+            decidedAt = Instant.parse("2026-10-22T13:49:00Z"),
+            notifiedAt = Instant.parse("2026-10-22T14:00:00Z"),
+            ruleReference = "Regel 1",
+            facts = "Tatsachen",
+            explanation = "Begründung"
+        )
+        val complaints = listOf(
+            ModerationCaseDetail.ComplaintSummary(1, Decoded.complaint.status, Instant.parse("2026-10-22T15:49:00Z")),
+            ModerationCaseDetail.ComplaintSummary(2, Decoded.complaint.status, Instant.parse("2026-10-23T15:49:00Z"), "Mo")
+        )
+        val escalation = Decoded.caseEscalated.escalation!!.copy(evidence = emptyList(), quarantined = true)
+        val detail = Decoded.caseEscalated.copy(
+            decisions = listOf(
+                decision,
+                decision.copy(isComplaintReview = false, deciderName = "Mo", notifiedAt = null),
+                decision.copy(outcome = Labelled("account_suspended", "Konto gesperrt"), suspensionDays = 7, isComplaintReview = false)
+            ),
+            complaints = complaints,
+            escalation = escalation
+        )
+        var shown by mutableStateOf(detail)
+        ui.show { CaseDetailContent(4, CaseDetailUiState(Loadable.Loaded(shown)), CaseDetailActions()) }
+        compose.onNodeWithText("nach Widerspruch").performScrollTo().assertIsDisplayed()
+        // A lock names its duration (Art. 17 Abs. 3 lit. a DSA).
+        compose.onNodeWithText("Konto gesperrt (7 Tage) · ", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("noch nicht", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("geprüft von Mo", substring = true).performScrollTo().assertIsDisplayed()
+        ui.shot("case-decisions")
+        compose.onNodeWithTag("case.complaint.2").performScrollTo().performClick()
+        assertEquals(StaffRoute.ComplaintReview(2), ui.top)
+        compose.onNodeWithText("Beweise löschen").assertDoesNotExist()
+        compose.onNodeWithText("Quarantäne aufheben").performScrollTo().assertIsDisplayed()
+
+        // The question follows what the case is about: a profile's or crowd's images are served again at once.
+        val tropfen = detail.copy(subjectUrl = "https://mildcrowd.com/tropfen/9")
+        val profile = detail.copy(subjectUrl = "https://mildcrowd.com/profil/mira")
+        val chat = detail.copy(report = detail.report.copy(kind = "chat_report"))
+        assertEquals(
+            "Quarantäne aufheben? Die Bilder werden dann wieder ausgeliefert, sobald der Post freigegeben ist.",
+            tropfen.liftQuarantineQuestion
+        )
+        assertEquals("Quarantäne aufheben? Die Anhänge der Nachricht sind dann für das Team wieder zu sehen.", chat.liftQuarantineQuestion)
+        assertEquals("Quarantäne aufheben? Profilbild und Banner werden dann wieder ausgeliefert.", profile.liftQuarantineQuestion)
+        assertEquals(
+            "Quarantäne aufheben? Das Banner der Crowd wird dann wieder ausgeliefert.",
+            detail.copy(subjectUrl = "https://mildcrowd.com/crowds/stadtgarten").liftQuarantineQuestion
+        )
+        // The same for the addresses since the rename (/posts/…, /crowds/…).
+        assertEquals(tropfen.liftQuarantineQuestion, detail.copy(subjectUrl = "https://mildcrowd.com/posts/9").liftQuarantineQuestion)
+        assertEquals(
+            "Quarantäne aufheben? Das Banner der Crowd wird dann wieder ausgeliefert.",
+            detail.copy(subjectUrl = "https://mildcrowd.com/crowds/stadtgarten").liftQuarantineQuestion
+        )
+        shown = profile
+        compose.onNodeWithText("Quarantäne aufheben").performScrollTo().performClick()
+        compose.onNodeWithText("Quarantäne aufheben? Profilbild und Banner werden dann wieder ausgeliefert.").assertExists()
+    }
+
+    @Test
+    fun `an involved viewer, files in quarantine and file evidence are named like on the web`() {
+        val involvedNote =
+            "Du bist an diesem Fall beteiligt. Übernehmen und entscheiden kann ihn deshalb nur eine andere Person aus dem Team."
+        val open = Decoded.caseChat.copy(
+            status = Labelled("open", "Offen"),
+            can = Decoded.caseChat.can.copy(decide = false),
+            involved = true,
+            report = Decoded.caseChat.report.copy(attachments = emptyList(), lockedAttachments = 2)
+        )
+        assertEquals(involvedNote, open.involvedNote)
+        assertEquals(involvedNote, open.copy(status = Labelled("in_review", "In Prüfung")).involvedNote)
+        assertNull("decided: the decisions say the rest", open.copy(status = Labelled("decided", "Entschieden")).involvedNote)
+        assertNull(open.copy(involved = false).involvedNote)
+        assertEquals("Datei", EVIDENCE_KINDS["file"])
+        assertEquals("Bild", EVIDENCE_KINDS["image"])
+
+        val escalation = Decoded.caseEscalated.escalation!!
+        val fileEvidence = escalation.copy(evidence = listOf(escalation.evidence.first().copy(kind = "file")))
+        ui.show { CaseDetailContent(4, CaseDetailUiState(Loadable.Loaded(open.copy(escalation = fileEvidence))), CaseDetailActions()) }
+        compose.onNodeWithTag("case.involved").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(involvedNote).assertExists()
+        compose.onNodeWithTag("case.decide").assertDoesNotExist()
+        assertEquals(2, compose.onAllNodesWithText(LOCKED_ATTACHMENT).fetchSemanticsNodes().size)
+        compose.onNodeWithText("Anhang 2").assertExists()
+        compose.onNodeWithText("Datei · gesichert", substring = true).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `secured text opens and closes, links open in the app or the browser`() {
+        val withLink = Decoded.caseEscalated.copy(subjectUrl = "https://example.org/")
+        var detail by mutableStateOf(withLink)
+        ui.show { CaseDetailContent(4, CaseDetailUiState(Loadable.Loaded(detail)), CaseDetailActions()) }
+        compose.onNodeWithText("https://example.org/").performClick()
+        assertEquals("https://example.org/", ui.web.last())
+        compose.onNodeWithText("Text anzeigen").performScrollTo().performClick()
+        compose.onNodeWithText("Gemeldeter Text").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Text anzeigen").performScrollTo().performClick()
+        compose.onNodeWithText("Gemeldeter Text").assertDoesNotExist()
+        // A new case state with the same link: the link is not drawn again.
+        detail = withLink.copy(createdAt = Instant.parse("2026-10-24T10:00:00Z"))
+        compose.waitForIdle()
+        detail = withLink.copy(subjectUrl = "http://localhost/app/mitgliedschaft")
+        compose.onNodeWithText("http://localhost/app/mitgliedschaft").performScrollTo().performClick()
+        assertEquals(de.velwebsolutions.mildcrowd.design.navigation.MembershipRoute.Overview, ui.top)
+        assertEquals(1, ui.web.size)
+    }
+
+    @Test
+    fun `the figure cards answer TalkBack's click and the page refreshes by pulling`() {
+        val filters = mutableListOf<QueueFilter>()
+        var refreshed = 0
+        ui.show {
+            ModerationOverviewContent(ModerationOverviewUiState(Loadable.Loaded(Decoded.overview)), { refreshed++ }, { filters += it }, {})
+        }
+        compose.onNodeWithText("Dringend").performSemanticsAction(SemanticsActions.OnClick)
+        assertEquals(QueueFilter(priority = "urgent"), filters.last())
+        compose.onRoot().performTouchInput { swipeDown(startY = height * 0.3f, endY = height * 0.9f) }
+        compose.waitForIdle()
+        assertTrue(refreshed > 0)
+    }
+
+    @Test
+    fun `a lock without planned end or accusation`() {
+        val lock = Decoded.suspensions.active.first()
+        val bare = lock.copy(endsAt = null, endsAtLabel = null, accusation = null)
+        val unknownStrikes = lock.copy(id = 7, user = lock.user.copy(activeStrikes = null))
+        ui.show {
+            SuspensionsContent(SuspensionsUiState(Loadable.Loaded(Decoded.suspensions.copy(active = listOf(bare, unknownStrikes)))), {}, {})
+        }
+        compose.onNodeWithText("Sperre durch das Moderationsteam · seit 22.10.2026, 17:49 Uhr · Verstöße 2 von 3").assertExists()
+        compose.onNodeWithText("· bis 29.10.2026, 17:49 Uhr · Verstöße 0 von 3", substring = true).assertExists()
+        compose.onAllNodesWithText("Vorwurf: ", substring = true)[0].assertExists()
+    }
+
+    @Test
+    fun `the operator account confirms addresses, sends links and sets a new password`() {
+        val roles = Decoded.roles
+        val unconfirmed = roles.data[0].copy(accessManageable = true, emailVerified = false)
+        val confirmed = roles.data[2].copy(accessManageable = true, emailVerified = true)
+        repository.roles = Result.success(roles.copy(data = listOf(unconfirmed, roles.data[1], confirmed)))
+        val viewModel = RolesViewModel(repository)
+        ui.show { RolesScreen(viewModel) }
+        compose.onNodeWithText("Als Betreiberkonto kannst du E-Mail-Adressen bestätigen", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("E-Mail bestätigt").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("roles.confirmEmail.${roles.data[1].id}").assertDoesNotExist()
+        ui.shot("roles-access")
+        compose.onNodeWithTag("roles.confirmEmail.${unconfirmed.id}").performScrollTo().performClick()
+        compose.onNodeWithText("Die E-Mail-Adresse ${unconfirmed.email} als bestätigt markieren?").assertIsDisplayed()
+        compose.onNodeWithText("Abbrechen").performClick()
+        assertFalse("nothing without the confirmation", repository.calls.any { it.startsWith("confirm") })
+        compose.onNodeWithTag("roles.confirmEmail.${unconfirmed.id}").performScrollTo().performClick()
+        compose.onNodeWithTag("roles.confirmEmail.confirm").performClick()
+        compose.waitForIdle()
+        assertTrue(repository.calls.contains("confirm ${unconfirmed.id}"))
+        compose.onNodeWithTag("roles.passwordLink.${unconfirmed.id}").performScrollTo().performClick()
+        compose.waitForIdle()
+        assertTrue(repository.calls.contains("link ${unconfirmed.id}"))
+        compose.onNodeWithTag("roles.setPassword.${confirmed.id}").performScrollTo().assertIsNotEnabled()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(hasTestTag("roles.password.${confirmed.id}"))).performScrollTo()
+            .performTextInput("ein-langes-passwort")
+        // The snackbar of the last action would cover the button.
+        viewModel.dismissMessage()
+        compose.waitForIdle()
+        compose.onNodeWithTag("roles.setPassword.${confirmed.id}").performScrollTo().performClick()
+        compose.onNodeWithText("Passwort von ${confirmed.displayName} setzen? Das Konto wird überall abgemeldet.").assertIsDisplayed()
+        compose.onNodeWithTag("roles.setPassword.confirm").performClick()
+        compose.waitForIdle()
+        assertTrue(repository.calls.contains("password ${confirmed.id} ein-langes-passwort"))
+    }
+
+    @Test
+    fun `without operator rights there is no access section`() {
+        val viewModel = RolesViewModel(repository)
+        ui.show { RolesScreen(viewModel) }
+        compose.onNodeWithText("Als Betreiberkonto kannst du E-Mail-Adressen bestätigen", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Link für neues Passwort senden").assertDoesNotExist()
+    }
+}

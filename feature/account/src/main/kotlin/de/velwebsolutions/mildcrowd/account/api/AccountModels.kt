@@ -1,0 +1,387 @@
+package de.velwebsolutions.mildcrowd.account.api
+
+import de.velwebsolutions.mildcrowd.core.model.Me
+import de.velwebsolutions.mildcrowd.core.network.MildcrowdDay
+import de.velwebsolutions.mildcrowd.core.network.MildcrowdInstant
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+
+// Account settings (`App\Http\Resources\Api\V1\Account\AccountSettingsResource`).
+
+/** The blocks of /app/einstellungen: profile, two-factor state and this device's password confirmation. */
+@Serializable
+data class AccountSettings(
+    val displayName: String,
+    val username: String,
+    val email: String,
+    val emailVerified: Boolean = true,
+    val twoFactor: TwoFactorState = TwoFactorState(),
+    val passwordConfirmed: Boolean = false
+)
+
+/** Two-factor sign-in: off, set up but not confirmed (with what the authenticator app needs), or active. */
+@Serializable
+data class TwoFactorState(
+    val state: Phase = Phase.Off,
+    /** The secret to type into the authenticator app, only while pending. */
+    val setupKey: String? = null,
+    /** `otpauth://totp/…`, shown as QR code and as a link to the authenticator app, only while pending. */
+    val otpauthUrl: String? = null
+) {
+    @Serializable
+    enum class Phase {
+        @SerialName("off")
+        Off,
+
+        @SerialName("pending")
+        Pending,
+
+        @SerialName("active")
+        Active
+    }
+}
+
+/**
+ * Answer of a two-factor change: the German status message, the new state and – only right after confirming two-factor
+ * or creating new codes – the recovery codes, shown once like the web.
+ */
+@Serializable
+data class SettingsChange(val message: String, val data: AccountSettings, val recoveryCodes: List<String>? = null)
+
+/** One passkey of the account (`PasskeyResource`): never the key itself, only what the member sees. */
+@Serializable
+data class Passkey(
+    val id: Int,
+    val name: String,
+    /** The password manager it lives in, when the authenticator says so („Google Passwortmanager“). */
+    val authenticator: String? = null,
+    val createdAt: MildcrowdInstant? = null,
+    val lastUsedAt: MildcrowdInstant? = null
+)
+
+/** The optional mobile number for sign-in codes by SMS (`account/phone`); numbers only masked. */
+@Serializable
+data class PhoneNumberStatus(
+    /** False while SMS is not set up on the server: then there is nothing to enter. */
+    val smsAvailable: Boolean = false,
+    /** The confirmed number, masked („+49 176 ••• 78“). */
+    val phoneNumber: String? = null,
+    val verifiedAt: MildcrowdInstant? = null,
+    /** A new number waiting for the code of its SMS, masked. */
+    val pending: String? = null
+) {
+    /** Web and iOS leave the block out while SMS is off and no number is saved (a saved one can still be deleted). */
+    val isShown: Boolean get() = smsAvailable || phoneNumber != null || pending != null
+}
+
+/** `{message, data: Me}` of a profile change. */
+@Serializable
+data class ProfileChange(val message: String? = null, val data: Me)
+
+// Lock screen and complaints.
+
+/**
+ * The active lock (/app/gesperrt): `suspension` from a decision "Konto gesperrt" with its planned end, or `ban` after
+ * [strikeLimit] confirmed violations within [strikeMonths] months. Since 6 November 2026 a lock is always a human
+ * decision – the automated check only holds content – so there is no provisional lock any more.
+ */
+@Serializable
+data class Suspension(
+    val type: String,
+    val label: String,
+    val startedAt: MildcrowdInstant,
+    /** The planned end of a lock with a duration; null for a ban. */
+    val endsAt: MildcrowdInstant? = null,
+    /** The planned end as the web shows it ("12.11.2026, 14:05 Uhr"); null for a ban. */
+    val endsAtLabel: String? = null,
+    val accusation: String,
+    val excerpt: String? = null,
+    val statement: String? = null,
+    val statementAt: MildcrowdInstant? = null,
+    /** Confirmed violations of the last [strikeMonths] months. */
+    val strikes: Int = 0,
+    val strikeLimit: Int = 3,
+    /** Months a confirmed violation counts towards the permanent ban. */
+    val strikeMonths: Int = 12,
+    val statementMax: Int = 3000,
+    /** The complaint against the decision behind the lock (AGB § 15); servers before 7 November 2026 leave it out. */
+    val complaint: SuspensionComplaint? = null
+) {
+    val isBan: Boolean get() = type == "ban"
+}
+
+/**
+ * The complaint the locked member may file (SuspensionAppeal): the decision in force on the lock's case and the last
+ * day to complain, whether the form is open ([allowed]: no own complaint yet, deadline not passed, decision still
+ * current), when the own complaint arrived, and the DSA address for a lock without a case.
+ */
+@Serializable
+data class SuspensionComplaint(
+    val decisionId: Int? = null,
+    val deadline: MildcrowdInstant? = null,
+    val allowed: Boolean = false,
+    val submittedAt: MildcrowdInstant? = null,
+    val email: String? = null
+)
+
+@Serializable
+data class StatementSaved(val message: String, val statementAt: MildcrowdInstant)
+
+/** A moderation decision as the affected member may read it. */
+@Serializable
+data class ComplaintDecision(
+    val id: Int,
+    val outcome: String,
+    val ground: String,
+    val ruleReference: String = "",
+    val explanation: String = "",
+    val deadline: MildcrowdInstant
+)
+
+// Privacy centre.
+
+/** One choice of an audience setting (also report categories, avatar colours and the tour's audiences). */
+@Serializable
+data class PrivacyChoice(val value: String, val label: String)
+
+/** A value that is either a switch ([Flag]) or an audience ([Choice]), as the API sends it (`true` or `"members"`). */
+@Serializable(with = PrivacyValueSerializer::class)
+sealed interface PrivacyValue {
+    data class Flag(val value: Boolean) : PrivacyValue
+
+    data class Choice(val value: String) : PrivacyValue
+
+    val flag: Boolean get() = (this as? Flag)?.value ?: false
+    val choice: String? get() = (this as? Choice)?.value
+}
+
+/** Decodes a JSON boolean as [PrivacyValue.Flag] and anything else as [PrivacyValue.Choice]. */
+object PrivacyValueSerializer : KSerializer<PrivacyValue> {
+    override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor
+
+    override fun deserialize(decoder: Decoder): PrivacyValue {
+        val element = (decoder as JsonDecoder).decodeJsonElement()
+        val primitive = element as? JsonPrimitive ?: return PrivacyValue.Choice(element.toString())
+        if (!primitive.isString) primitive.booleanOrNull?.let { return PrivacyValue.Flag(it) }
+        return PrivacyValue.Choice(primitive.content)
+    }
+
+    override fun serialize(encoder: Encoder, value: PrivacyValue) {
+        val element = when (value) {
+            is PrivacyValue.Flag -> JsonPrimitive(value.value)
+            is PrivacyValue.Choice -> JsonPrimitive(value.value)
+        }
+        (encoder as JsonEncoder).encodeJsonElement(element)
+    }
+}
+
+/**
+ * One privacy setting with its German title and help, as PrivacyOptions describes it. The screens render it from
+ * [kind] and [choices] alone, so a new setting on the server needs no app update.
+ */
+@Serializable
+data class PrivacySettingItem(
+    val key: String,
+    val title: String,
+    val help: String = "",
+    /** "switch" or "choice". */
+    val kind: String,
+    val value: PrivacyValue,
+    val choices: List<PrivacyChoice> = emptyList()
+) {
+    val isSwitch: Boolean get() = kind == "switch"
+
+    /** The value as the summary of the check shows it ("Ja"/"Nein" or the audience label). */
+    val valueLabel: String
+        get() = when (value) {
+            is PrivacyValue.Flag -> if (value.value) "Ja" else "Nein"
+            is PrivacyValue.Choice -> choices.firstOrNull { it.value == value.value }?.label ?: value.value
+        }
+}
+
+@Serializable
+data class PrivacySection(val key: String, val title: String, val inCheckup: Boolean = false, val settings: List<PrivacySettingItem>)
+
+@Serializable
+data class PrivacyCounts(
+    val publicPosts: Int = 0,
+    val hiddenWords: Int = 0,
+    val restricted: Int = 0,
+    val blocked: Int = 0,
+    val muted: Int = 0
+)
+
+@Serializable
+data class PrivacyCentre(val sections: List<PrivacySection>, val counts: PrivacyCounts = PrivacyCounts())
+
+@Serializable
+data class HiddenWords(val words: List<String>, val max: Int)
+
+// Devices.
+
+@Serializable
+data class DeviceOverview(
+    val current: Current,
+    val apps: List<AppSignIn> = emptyList(),
+    val sessionsListable: Boolean = false,
+    val sessions: List<BrowserSession> = emptyList(),
+    val known: List<KnownDevice> = emptyList(),
+    val loginAlerts: Boolean = false,
+    val chatDevices: List<ChatDevice> = emptyList(),
+    val chatPassphrase: Boolean = false
+) {
+    @Serializable
+    data class Current(val name: String? = null, val device: String, val ip: String)
+
+    @Serializable
+    data class AppSignIn(val id: Int, val name: String, val signedInAt: MildcrowdInstant? = null, val lastUsedAt: MildcrowdInstant? = null)
+
+    @Serializable
+    data class BrowserSession(val key: String, val device: String, val ip: String, val lastActiveAt: MildcrowdInstant)
+
+    @Serializable
+    data class KnownDevice(val id: Int, val label: String, val lastSeenAt: MildcrowdInstant)
+
+    @Serializable
+    data class ChatDevice(val id: Int, val label: String, val createdAt: MildcrowdInstant)
+}
+
+// Safety.
+
+/** A person in the safety lists, with the avatar fields of the network's member resource. */
+@Serializable
+data class SafetyAccount(
+    val id: Int,
+    val username: String,
+    val displayName: String,
+    val initials: String,
+    val avatarColor: String = "dune",
+    val photoUrl: String? = null
+)
+
+@Serializable
+data class SafetyLists(
+    val blocked: List<SafetyAccount> = emptyList(),
+    val muted: List<SafetyAccount> = emptyList(),
+    val restricted: List<SafetyAccount> = emptyList()
+)
+
+/** The three lists of Blockiert & stumm and their endpoints. */
+enum class SafetyList(val path: String) { Blocks("blocks"), Mutes("mutes"), Restrictions("restrictions") }
+
+/** `review_hours` is config('mildcrowd.moderation.review_hours') = 48; the fallback says the same. */
+@Serializable
+data class ReportForm(val url: String, val categories: List<PrivacyChoice>, val reviewHours: Int = 48)
+
+// Welcome tour.
+
+@Serializable
+data class WelcomeStep(val key: String, val title: String)
+
+@Serializable
+data class StarterCrowd(
+    val id: Int,
+    val slug: String,
+    val name: String,
+    val description: String = "",
+    val color: String = "dune",
+    val membersCount: Int = 0,
+    val bannerUrl: String? = null,
+    val joined: Boolean = false
+)
+
+@Serializable
+data class WelcomeTour(
+    val steps: List<WelcomeStep>,
+    val onboarded: Boolean = false,
+    val bio: String = "",
+    val location: String = "",
+    val avatarColor: String = "sun",
+    val colors: List<PrivacyChoice> = emptyList(),
+    val profileAudience: String = "members",
+    val defaultPostVisibility: String = "members",
+    val audiences: List<PrivacyChoice> = emptyList(),
+    val visibilities: List<PrivacyChoice> = emptyList(),
+    val crowds: List<StarterCrowd> = emptyList(),
+    /** The chosen colour of the initials; null: „Automatisch“. */
+    val avatarColorChoice: String? = null,
+    /** Whether [crowds] were picked by people (`mildcrowd.onboarding.featured_crowds`), or are the largest crowds in order. */
+    val crowdsHandPicked: Boolean = false
+)
+
+@Serializable
+data class CrowdJoined(val joined: Boolean)
+
+// Glossary.
+
+@Serializable
+data class GlossaryTerm(val term: String, val slug: String, val explanation: String)
+
+// Was ist neu (GET /api/v1/releases, public).
+
+/** Every version of Mildcrowd, newest first; [current] is the newest, [about] tells how Mildcrowd is built (with AI). */
+@Serializable
+data class ReleaseList(val current: String, val about: String = "", val data: List<Release> = emptyList())
+
+/** One product version: the same number on web, iOS and Android, with a section per platform. */
+@Serializable
+data class Release(
+    val version: String,
+    val date: MildcrowdDay,
+    val title: String,
+    val summary: String = "",
+    val sections: List<ReleaseSection> = emptyList()
+) {
+    /** „3. November 2026“. */
+    val day: String get() = DayFormat.format(date)
+
+    /**
+     * The notes for this app: the sections for all platforms and for [platform], grouped by kind in the order „Neu“,
+     * „Verbessert“, „Behoben“, „Sicherheit“, „Entfernt“ (unknown kinds after them, as sent). Other platforms are left out.
+     */
+    fun notesFor(platform: String = ANDROID): List<ReleaseNoteGroup> {
+        val texts = sections
+            .filter { it.platform == ALL || it.platform == platform }
+            .flatMap { it.items }
+            .groupBy({ it.type }, { it.text })
+        return texts.keys
+            .sortedBy { type -> KINDS.indexOf(type).takeIf { it >= 0 } ?: KINDS.size }
+            .map { type -> ReleaseNoteGroup(LABELS[type] ?: (type.take(1).uppercase() + type.drop(1)), texts.getValue(type)) }
+    }
+
+    companion object {
+        const val ALL = "alle"
+        const val ANDROID = "android"
+        private val KINDS = listOf("neu", "verbessert", "behoben", "sicherheit", "entfernt")
+        private val LABELS = mapOf(
+            "neu" to "Neu",
+            "verbessert" to "Verbessert",
+            "behoben" to "Behoben",
+            "sicherheit" to "Sicherheit",
+            "entfernt" to "Entfernt"
+        )
+        private val DayFormat = DateTimeFormatter.ofPattern("d. MMMM yyyy", Locale.GERMAN)
+    }
+}
+
+/** The changes of one version for one platform („alle“, „web“, „ios“ or „android“). */
+@Serializable
+data class ReleaseSection(val platform: String, val items: List<ReleaseItem> = emptyList())
+
+/** One change; [type] is „neu“, „verbessert“, „behoben“, „sicherheit“ or „entfernt“. */
+@Serializable
+data class ReleaseItem(val type: String, val text: String)
+
+/** The changes of one kind, as the app shows them („Neu“ with its lines). */
+data class ReleaseNoteGroup(val label: String, val texts: List<String>)

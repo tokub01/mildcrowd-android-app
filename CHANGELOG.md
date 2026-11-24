@@ -1,6 +1,6 @@
 # Changelog
 
-<!-- Generated from resources/data/releases.json in the web repository by `php artisan oasis:releases changelog`. Do not edit by hand. -->
+<!-- Generated from resources/data/releases.json in the web repository by `php artisan mildcrowd:releases changelog`. Do not edit by hand. -->
 
 Alle Versionen von Mildcrowd für Android. Eine Versionsnummer gilt für Web, iOS und Android zugleich; alle Versionen stehen auf https://mildcrowd.com/neuigkeiten.
 
@@ -17,6 +17,18 @@ Ab 11. Oktober 2026: Mildcrowd entsteht mit KI-Werkzeugen. Der Arbeitsplan von d
 Ab 22. Oktober 2026: Seitdem trägt jede Änderung in allen drei Projekten den Vermerk, dass sie gemeinsam mit Claude entstanden ist (Modell Claude Opus 5.5). Die iOS-App und die Android-App sind von Anfang an so entstanden. Seitdem wird Mildcrowd also hauptsächlich mit Claude Code gebaut.
 
 Was dabei gleich bleibt: Ein Mensch entscheidet, was in Mildcrowd kommt, beauftragt jede Runde und prüft sie. Jede Änderung wird durch automatische Tests abgesichert, bevor sie ausgeliefert wird.
+
+## 0.29.0 – 2026-11-23 – Mildcrowd
+
+Wir heißen jetzt Mildcrowd: neuer Name, neue Adresse mildcrowd.com, neues Aussehen und neue Wörter. Dazu neun Themen-Crowds zum Start, eine Suche nach passenden Crowds und freiwillige Tipps per E-Mail.
+
+- **Neu:** Wir heißen jetzt Mildcrowd. Du findest uns unter mildcrowd.com, mit neuem Zeichen und dem neuen Aussehen „Blaue Stunde“.
+- **Neu:** Neue Wörter: Es gibt jetzt Crowds und Posts, deine Startseite heißt Start, wer dir folgt, sind deine Follower, und Weitergeben heißt Teilen. Die mittlere Mitgliedschaft heißt Mittendrin.
+- **Neu:** Zum Start warten neun Themen-Crowds auf dich, und in der Einführung findest du Crowds, die zu dir passen.
+- **Verbessert:** Ruhigeres Aussehen: Karten mit feiner Linie und weichem Schatten, ruhigere Knöpfe. Das Haus im Menü führt zu Start.
+- **Verbessert:** Rechnungsnummern beginnen jetzt mit MC-, Gutscheincodes mit MILD-.
+- **Verbessert:** Dein Datenexport heißt jetzt mildcrowd-daten.zip. Die Datenschutzerklärung nennt den neuen Namen (Stand 23.11.2026), sonst ändert sich darin nichts.
+- **Entfernt:** Links aus der Zeit vor dem neuen Namen, die auf eine Crowd zeigen, führen nicht mehr weiter. Crowds findest du unter mildcrowd.com/crowds.
 
 ## 0.28.0 – 2026-11-07 – Was wir sagen, tun wir
 

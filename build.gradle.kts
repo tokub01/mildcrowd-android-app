@@ -56,8 +56,8 @@ dependencies {
 kover {
     // The modules set their own filters (build-logic, configureKover); the merged report uses the same ones.
     useJacoco("0.8.15")
-    currentProject.createVariant("oasis") {}
-    currentProject.createVariant("oasisLogic") {}
+    currentProject.createVariant("mildcrowd") {}
+    currentProject.createVariant("mildcrowdLogic") {}
     reports.filters.excludes {
         classes(
             "*_HiltModules*", "*Hilt_*", "hilt_aggregated_deps.*", "dagger.hilt.*", "_*", "*_*Factory", "*_*Factory\$*", "*_Factory_Impl",
@@ -65,10 +65,10 @@ kover {
             "*.BuildConfig", "*.R", "*.R\$*",
         )
         // Rewritten by Hilt at build time, so JaCoCo cannot attribute their execution (see build-logic, Shared.kt).
-        classes("de.velwebsolutions.oasis.app.MainActivity", "de.velwebsolutions.oasis.app.OasisApplication")
+        classes("de.velwebsolutions.mildcrowd.app.MainActivity", "de.velwebsolutions.mildcrowd.app.MildcrowdApplication")
         annotatedBy("dagger.Module", "androidx.compose.ui.tooling.preview.Preview")
     }
-    reports.variant("oasis") {
+    reports.variant("mildcrowd") {
         verify.rule("Lines") {
             bound {
                 minValue = 100
@@ -76,7 +76,7 @@ kover {
             }
         }
     }
-    reports.variant("oasisLogic") {
+    reports.variant("mildcrowdLogic") {
         filters.excludes.annotatedBy("androidx.compose.runtime.Composable")
         verify.rule("Branches outside composables") {
             bound {

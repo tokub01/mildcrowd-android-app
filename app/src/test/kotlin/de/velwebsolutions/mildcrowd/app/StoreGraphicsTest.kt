@@ -1,0 +1,59 @@
+package de.velwebsolutions.mildcrowd.app
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.github.takahirom.roborazzi.captureRoboImage
+import de.velwebsolutions.mildcrowd.design.components.MildcrowdLogo
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdColors
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdTheme
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdType
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+/**
+ * Renders the feature graphic of the Play listing (1024 × 500, src/main/play/listings/de-DE/graphics/feature-graphic)
+ * from the app's own logo and fonts: `./gradlew :app:testDebugUnitTest --tests '*StoreGraphicsTest*'` writes it to
+ * build/outputs/roborazzi/play-feature-graphic.png.
+ */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "w1024dp-h500dp-mdpi")
+class StoreGraphicsTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    @Test
+    fun featureGraphic() {
+        compose.setContent {
+            MildcrowdTheme {
+                Box(Modifier.fillMaxSize().background(MildcrowdColors.Sand), contentAlignment = Alignment.CenterStart) {
+                    Column(Modifier.padding(horizontal = 72.dp), verticalArrangement = Arrangement.spacedBy(28.dp)) {
+                        MildcrowdLogo(size = 96.dp)
+                        Text("Social Media, das dir Zeit zurückgibt.", style = MildcrowdType.display(44), color = MildcrowdColors.Night)
+                        Text(
+                            "Ohne Werbung. Ohne Algorithmus. Mit einem Ende.",
+                            style = MildcrowdType.Lead.copy(fontSize = 26.sp, lineHeight = 34.sp),
+                            color = MildcrowdColors.Ink2
+                        )
+                    }
+                }
+            }
+        }
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/play-feature-graphic.png")
+    }
+}

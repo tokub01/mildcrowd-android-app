@@ -1,0 +1,269 @@
+package de.velwebsolutions.mildcrowd.design.navigation
+
+import java.net.URI
+import java.net.URLDecoder
+
+/** What an incoming link (an App Link from a mail, a push tap, `mildcrowd://`) asks the app to do. */
+sealed interface IncomingLink {
+    /** A screen of the app. */
+    data class Screen(val route: AppRoute) : IncomingLink
+
+    /** `/email/bestaetigen/{id}/{hash}?expires=…&signature=…`: confirms the address once a member is signed in. */
+    data class VerifyEmail(val id: String, val hash: String, val expires: String, val signature: String) : IncomingLink
+
+    /** `/passwort-zuruecksetzen/{token}?email=…`: „Neues Passwort“ (signed in, the website takes it: [url]). */
+    data class ResetPassword(val token: String, val email: String, val url: String) : IncomingLink
+
+    /** `/anmelden/code…`: the sign-in with a code. */
+    data object LoginCode : IncomingLink
+
+    /** A page outside the app area, or one of the paths that stay on the website (AppLinks::EXCLUDED): the browser opens it. */
+    data class Browser(val url: String) : IncomingLink
+}
+
+/**
+ * Maps Mildcrowd web URLs (the same links used in mails, push payloads and shared posts) to app routes, so a link to
+ * mildcrowd.com opens the matching screen. Unknown paths return null ([route]); [incoming] opens them in the browser,
+ * or on the Start when they belong to the app.
+ */
+object DeepLink {
+    /**
+     * The host of this build's server (set once at start from its base URL). A web link to any other host never opens a
+     * screen or an account link of the app – a hint, push or post could otherwise dress up a foreign page as Mildcrowd'.
+     * Null (tests, previews) checks no host.
+     */
+    @Volatile
+    var ownHost: String? = null
+
+    /** Whether [uri] is `mildcrowd://` or a web link of [ownHost]. */
+    private fun isOwn(uri: URI): Boolean = uri.scheme == "mildcrowd" || ownHost.let { it == null || uri.host.equals(it, ignoreCase = true) }
+
+    /** Paths inside the app's App Links that stay in the browser (app/Support/Security/AppLinks.php, EXCLUDED). */
+    private val BrowserOnly = listOf("/app/chat/api/", "/app/mitgliedschaft/rechnungen/", "/app/konto/export")
+
+    /**
+     * What the app does with an incoming [url]: a screen, an account link, or the browser. An `mildcrowd://` link or a page
+     * of the app area (`/app/…`) without a screen of its own opens the Start, like iOS: handed to the browser it would
+     * come straight back and open the browser again, without end – the app is the only handler of its scheme, and its
+     * verified App Links take every page of the app area.
+     */
+    fun incoming(url: String): IncomingLink {
+        val uri = runCatching { URI(url) }.getOrNull()?.takeIf(::isOwn) ?: return IncomingLink.Browser(url)
+        val path = uri.rawPath ?: ""
+        if (uri.scheme != "mildcrowd" && BrowserOnly.any { path.startsWith(it) }) return IncomingLink.Browser(url)
+        val appScheme = uri.scheme == "mildcrowd"
+        // `mildcrowd://email/bestaetigen/…` (the website's "In der App öffnen") carries the first segment as host.
+        val parts =
+            (if (appScheme) listOfNotNull(uri.host) else emptyList()) + path.split("/").filter { it.isNotEmpty() }.map { decode(it) }
+        val query = query(uri)
+        return when {
+            parts.size == 4 && parts[0] == "email" && parts[1] == "bestaetigen" -> {
+                val expires = query["expires"]
+                val signature = query["signature"]
+                if (expires == null || signature == null) null else IncomingLink.VerifyEmail(parts[2], parts[3], expires, signature)
+            }
+
+            // A reset token never comes over `mildcrowd://`: any app could claim the scheme, so the website keeps it.
+            !appScheme && parts.size == 2 && parts[0] == "passwort-zuruecksetzen" -> IncomingLink.ResetPassword(
+                parts[1],
+                query["email"].orEmpty(),
+                url
+            )
+
+            parts.firstOrNull() == "anmelden" && parts.getOrNull(1)?.startsWith("code") == true -> IncomingLink.LoginCode
+
+            else -> null
+        } ?: route(url)?.let(IncomingLink::Screen)
+            ?: if (appScheme || parts.firstOrNull() == "app") IncomingLink.Screen(NetworkRoute.Source) else IncomingLink.Browser(url)
+    }
+
+    private val Username = Regex("[a-z0-9_]{3,30}")
+    private val ConversationId = Regex("[1-9]\\d{0,15}")
+
+    /** The token of a companion place link (`[A-Za-z0-9]{40}`, routes/membership.php). */
+    private val CompanionToken = Regex("[A-Za-z0-9]{40}")
+
+    fun route(url: String): AppRoute? {
+        val uri = runCatching { URI(url) }.getOrNull()?.takeIf(::isOwn) ?: return null
+        // App URLs (`mildcrowd://mitgliedschaft?checkout=…` after a payment) carry the first path segment as host.
+        val appHost = if (uri.scheme == "mildcrowd") listOfNotNull(uri.host) else emptyList()
+        val parts = appHost + (uri.rawPath ?: "").split("/").filter { it.isNotEmpty() }.map { decode(it) }
+        val query = query(uri)
+
+        // The chat is one web page routed by hash: #c/{id}, #c/{id}/info, #neu, #neu/{username} (ui/route.js).
+        val fragment = uri.rawFragment
+        if (parts == listOf("app", "nachrichten") && fragment != null) return chatRoute(decode(fragment))
+
+        when (parts.size) {
+            0 -> return null
+
+            1 -> return when (parts[0]) {
+                "app" -> NetworkRoute.Source
+                "moderation" -> StaffRoute.Moderation
+                "admin" -> StaffRoute.AdminDashboard
+                "mitglied-werden" -> MembershipRoute.Checkout
+                "mitgliedschaft" -> MembershipRoute.Overview
+                "transparenz" -> MembershipRoute.Transparency
+                "neuigkeiten" -> AccountRoute.Releases
+                else -> null
+            }
+        }
+
+        val third = parts.getOrNull(2)
+        // Posts and crowds answer to their addresses from before the rename too (/tropfen/…, …/weitertragen).
+        return when (parts[0]) {
+            "posts", "tropfen" -> {
+                val id = parts[1].toIntOrNull() ?: return null
+                when (third) {
+                    "bearbeiten" -> NetworkRoute.EditPost(id)
+                    "teilen", "weitertragen" -> NetworkRoute.CarryPost(id)
+                    else -> NetworkRoute.Post(id)
+                }
+            }
+
+            "crowds" -> when (third) {
+                "bearbeiten" -> NetworkRoute.EditCrowd(parts[1])
+
+                "schliessen" -> NetworkRoute.CloseCrowd(parts[1])
+
+                "statistik" -> NetworkRoute.CrowdStatistics(parts[1])
+
+                // „#treffen“ (meetup hints) opens the page at its meetups.
+                else -> NetworkRoute.Crowd(parts[1], meetups = uri.rawFragment == "treffen", collection = query["sammlung"]?.toIntOrNull())
+            }
+
+            "profil" -> NetworkRoute.Profile(parts[1])
+
+            "einladung" -> NetworkRoute.Invitation(parts[1])
+
+            "gemeinsam" -> NetworkRoute.InvitationGroup(parts[1])
+
+            "themen" -> NetworkRoute.Tag(parts[1])
+
+            "moderation" -> when (parts[1]) {
+                "cases" -> third?.toIntOrNull()?.let { StaffRoute.ModerationCase(it) }
+                "complaints" -> third?.toIntOrNull()?.let { StaffRoute.ComplaintReview(it) }
+                "roles" -> StaffRoute.Roles
+                "sperren" -> StaffRoute.Suspensions
+                else -> null
+            }
+
+            "admin" -> when (parts[1]) {
+                "zahlungen" -> StaffRoute.AdminPayments
+                "datenpannen" -> StaffRoute.AdminBreaches
+                "system" -> StaffRoute.AdminSystem
+                else -> null
+            }
+
+            "app" -> if (parts[1] == "zeitkapseln" && uri.rawFragment == "einladungen") {
+                NetworkRoute.CapsuleInvitations
+            } else {
+                appRoute(parts[1], parts.drop(2), query)
+            }
+
+            else -> null
+        }
+    }
+
+    /** The chat's hash routes; anything else is the conversation list (like `parseRoute` in resources/js/chat/ui/route.js). */
+    private fun chatRoute(fragment: String): ChatRoute {
+        val segments = fragment.removePrefix("/").split("/")
+        return when (segments.first()) {
+            "neu" -> when {
+                segments.size == 2 && Username.matches(segments[1]) -> ChatRoute.NewConversationWith(segments[1])
+                segments.size == 1 -> ChatRoute.NewConversation
+                else -> ChatRoute.Conversations
+            }
+
+            "c" -> {
+                val id = segments.getOrNull(1)?.takeIf { ConversationId.matches(it) }?.toIntOrNull() ?: return ChatRoute.Conversations
+                when {
+                    segments.size == 3 && segments[2] == "info" -> ChatRoute.Details(id)
+                    segments.size == 2 -> ChatRoute.Conversation(id)
+                    else -> ChatRoute.Conversations
+                }
+            }
+
+            else -> ChatRoute.Conversations
+        }
+    }
+
+    private fun appRoute(section: String, rest: List<String>, query: Map<String, String>): AppRoute? = when (section) {
+        "entdecken" -> NetworkRoute.Discover
+
+        "durchblaettern" -> NetworkRoute.Swipe
+
+        "freunde" -> NetworkRoute.Friends
+
+        "crowds" -> when (rest.firstOrNull()) {
+            "neu" -> NetworkRoute.CreateCrowd
+            "karte" -> NetworkRoute.CrowdMap(query["region"]?.takeIf { it.isNotEmpty() })
+            else -> NetworkRoute.Crowds
+        }
+
+        "profil" -> NetworkRoute.EditProfile
+
+        "statistik" -> NetworkRoute.Statistics
+
+        "zeitkapseln" -> NetworkRoute.TimeCapsules
+
+        "jahrbuch" -> NetworkRoute.Yearbook(rest.firstOrNull()?.toIntOrNull())
+
+        "einladen" -> NetworkRoute.Invitations
+
+        "suche" -> NetworkRoute.Search(query["q"])
+
+        "gemerkt" -> NetworkRoute.Bookmarks
+
+        "wochenbrief" -> NetworkRoute.WeeklyLetter(rest.firstOrNull()?.toIntOrNull())
+
+        "ideen" -> NetworkRoute.Ideas(rest.firstOrNull()?.toIntOrNull())
+
+        "nachrichten" -> (query["c"]?.toIntOrNull() ?: query["conversation"]?.toIntOrNull())
+            ?.let { ChatRoute.Conversation(it) } ?: ChatRoute.Conversations
+
+        "hinweise" -> if (rest.firstOrNull() == "einstellungen") LiveRoute.Settings else LiveRoute.Inbox
+
+        "einstellungen" -> AccountRoute.Settings
+
+        "privatsphaere" -> when (rest.firstOrNull()) {
+            "check" -> AccountRoute.PrivacyCheckup
+            "woerter" -> AccountRoute.HiddenWords
+            "geraete" -> AccountRoute.Devices
+            "zeit" -> AccountRoute.ScreenTime
+            else -> AccountRoute.Privacy
+        }
+
+        "willkommen" -> AccountRoute.Welcome
+
+        "sicherheit" -> AccountRoute.Safety
+
+        "melden" -> AccountRoute.Report(query["url"])
+
+        "begriffe" -> AccountRoute.Glossary
+
+        "gesperrt" -> AccountRoute.Suspended
+
+        "moderation" ->
+            if (rest.firstOrNull() == "complaint") rest.getOrNull(1)?.toIntOrNull()?.let { AccountRoute.Complaint(it) } else null
+
+        "mitgliedschaft" -> when (rest.firstOrNull()) {
+            "portal" -> MembershipRoute.Portal
+            "kuendigen" -> MembershipRoute.Cancel
+            "widerrufen" -> MembershipRoute.Withdraw
+            "rechnungen" -> rest.getOrNull(1)?.toIntOrNull()?.let { MembershipRoute.Invoice(it) }
+            "vorteile" -> MembershipRoute.Perks
+            "mitkommen" -> rest.getOrNull(1)?.takeIf { CompanionToken.matches(it) }?.let { MembershipRoute.CompanionLink(it) }
+            else -> MembershipRoute.Overview
+        }
+
+        else -> null
+    }
+
+    private fun query(uri: URI): Map<String, String> = (uri.rawQuery ?: "").split("&").filter { it.isNotEmpty() }.associate {
+        decode(it.substringBefore("=")) to decode(it.substringAfter("=", ""))
+    }
+
+    /** The URI is valid at this point, so every escape decodes. */
+    private fun decode(value: String): String = URLDecoder.decode(value, "UTF-8") // the Charset overload needs API 33
+}

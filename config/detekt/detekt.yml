@@ -61,7 +61,7 @@ style:
   UnnecessaryAbstractClass:
     active: false
   ThrowsCount:
-    # The crypto checks fail with a distinct error per step, like OasisChatCrypto.
+    # The crypto checks fail with a distinct error per step, like MildcrowdChatCrypto.
     max: 10
   LoopWithTooManyJumpStatements:
     maxJumpCount: 3

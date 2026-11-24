@@ -1,12 +1,12 @@
 plugins {
-    alias(libs.plugins.oasis.android.library)
+    alias(libs.plugins.mildcrowd.android.library)
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.testing"
+    namespace = "de.velwebsolutions.mildcrowd.testing"
 }
 
-// Test doubles shared by the unit tests of every module (like OasisCore's StubTransport on iOS).
+// Test doubles shared by the unit tests of every module (like MildcrowdCore's StubTransport on iOS).
 dependencies {
     api(project(":core"))
     api(libs.junit)

@@ -1,0 +1,875 @@
+package de.velwebsolutions.mildcrowd.network.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Reply
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.BookmarkRemove
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.HeartBroken
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.dp
+import de.velwebsolutions.mildcrowd.core.format.GermanTime
+import de.velwebsolutions.mildcrowd.core.format.RelativeTime
+import de.velwebsolutions.mildcrowd.design.components.AuthorizedImage
+import de.velwebsolutions.mildcrowd.design.components.AvatarTint
+import de.velwebsolutions.mildcrowd.design.components.Banner
+import de.velwebsolutions.mildcrowd.design.components.BannerKind
+import de.velwebsolutions.mildcrowd.design.components.DashedNote
+import de.velwebsolutions.mildcrowd.design.components.MildcrowdButton
+import de.velwebsolutions.mildcrowd.design.components.pressable
+import de.velwebsolutions.mildcrowd.design.navigation.AccountRoute
+import de.velwebsolutions.mildcrowd.design.navigation.LocalNavigator
+import de.velwebsolutions.mildcrowd.design.navigation.NetworkRoute
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdColors
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdRadius
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdType
+import de.velwebsolutions.mildcrowd.network.NetworkSignals
+import de.velwebsolutions.mildcrowd.network.api.Member
+import de.velwebsolutions.mildcrowd.network.api.Post
+import de.velwebsolutions.mildcrowd.network.api.TextSegment
+import de.velwebsolutions.mildcrowd.network.ui.PostAction
+import java.time.Instant
+
+/**
+ * A Post card – the app's `x-network.post-card`: reply context, author line, notices for the author (held, removed
+ * from the crowd), text, images, the carried Post, "leise Zahlen" only for the author, the bundled conversation of
+ * the Start, the action row and the "⋯" menu (also on a long press). Buttons a viewer may not use are not shown.
+ */
+@Composable
+fun PostCard(
+    post: Post,
+    onAction: (PostAction, Post) -> Unit,
+    modifier: Modifier = Modifier,
+    /** On the Post page itself the card does not link to itself and shows the full date. */
+    isDetail: Boolean = false
+) {
+    val navigator = LocalNavigator.current
+    var confirmation by remember { mutableStateOf<CardConfirmation?>(null) }
+    var contextMenu by remember { mutableStateOf(false) }
+    // Where the finger rested, so the long-press menu opens there (like Android's text and list menus).
+    var pressedAt by remember { mutableStateOf(DpOffset.Zero) }
+    var cardHeight by remember { mutableStateOf(0.dp) }
+    val density = LocalDensity.current
+    val haptics = LocalHapticFeedback.current
+    val openMenuAt = { offset: Offset ->
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        pressedAt = with(density) { DpOffset(offset.x.toDp(), offset.y.toDp()) }
+        contextMenu = true
+    }
+    val viewer = post.viewer
+    val shape = RoundedCornerShape(MildcrowdRadius.M.dp)
+    val reply = {
+        NetworkSignals.replyFocus.value = post.id
+        if (!isDetail) navigator.open(NetworkRoute.Post(post.id))
+    }
+    val run = { action: PostAction -> onAction(action, post) }
+
+    Box(modifier) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(MildcrowdColors.Paper, shape)
+                .border(1.dp, MildcrowdColors.PaperLine, shape)
+                .then(
+                    if (viewer == null) {
+                        Modifier
+                    } else {
+                        // A long press opens the menu like the iOS context menu; TalkBack offers it as an action.
+                        Modifier
+                            .onSizeChanged { cardHeight = with(density) { it.height.toDp() } }
+                            .pointerInput(post.id) { detectTapGestures(onLongPress = openMenuAt) }
+                            .semantics {
+                                onLongClick("Aktionen zum Post") {
+                                    pressedAt = DpOffset.Zero
+                                    contextMenu = true
+                                    true
+                                }
+                            }
+                    }
+                )
+                .padding(20.dp)
+                .testTag("post.card.${post.id}"),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (post.isPlainCarry) {
+                CarrierLine(post, run, onConfirm = { confirmation = it })
+            } else {
+                ReplyContext(post)
+                Header(post, isDetail, run, onConfirm = { confirmation = it })
+            }
+            if (post.isQuestion) {
+                Row(
+                    Modifier.background(MildcrowdColors.Sand, CircleShape).padding(horizontal = 12.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Outlined.Groups, contentDescription = null, tint = MildcrowdColors.Night, modifier = Modifier.size(16.dp))
+                    Text(
+                        if (viewer?.isAuthor == true) "Frage an meine Follower" else "Frage an die Follower",
+                        style = MildcrowdType.Caption.copy(fontWeight = FontWeight.Bold),
+                        color = MildcrowdColors.Night
+                    )
+                }
+            }
+            if (post.removedFromCrowd) {
+                Banner("Die Gastgeber:innen haben diesen Post aus der Crowd entfernt. Nur du siehst ihn noch.", kind = BannerKind.Info)
+            }
+            post.held?.let { HeldNotice(it) }
+            if (!post.isPlainCarry) RichTextView(post.segments)
+            post.poll?.let { PostPollView(post, it) }
+            post.crowd?.takeIf { post.collections.isNotEmpty() }?.let { crowd -> PostCollections(crowd.slug, post.collections) }
+            PostImages(post)
+            post.carried?.let { CarriedView(it) }
+            Stats(post)
+            val conversation = post.conversation
+            if (!isDetail && conversation != null && conversation.replies.isNotEmpty()) ConversationView(post, conversation)
+            if (viewer != null) ActionRow(post, viewer, run, reply)
+            viewer?.replyHint?.takeUnless { viewer.canReply }?.let { hint ->
+                Text(hint, style = MildcrowdType.Caption, color = MildcrowdColors.Muted, modifier = Modifier.testTag("post.replyHint"))
+            }
+            if (!isDetail && viewer?.canQuickReply == true) {
+                HorizontalDivider(color = MildcrowdColors.PaperLine)
+                Row(
+                    Modifier
+                        .defaultMinSize(minHeight = 44.dp)
+                        .clickable(role = Role.Button) { navigator.present(NetworkRoute.Compose(replyTo = post.id)) },
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.Reply,
+                        contentDescription = null,
+                        tint = MildcrowdColors.Night,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text("Schnell antworten", style = MildcrowdType.SmallBold, color = MildcrowdColors.Night)
+                }
+            }
+        }
+        if (viewer != null) {
+            DropdownMenu(
+                expanded = contextMenu,
+                onDismissRequest = { contextMenu = false },
+                // The menu's offset counts from the card's bottom edge.
+                offset = DpOffset(pressedAt.x, pressedAt.y - cardHeight),
+                containerColor = MildcrowdColors.Paper
+            ) {
+                ContextMenuItems(post, viewer, run, reply, close = { contextMenu = false }, onConfirm = { confirmation = it })
+            }
+        }
+    }
+
+    confirmation?.let { asked ->
+        ConfirmDialog(
+            title = asked.title,
+            message = asked.message,
+            confirmLabel = asked.button,
+            onConfirm = { run(asked.action) },
+            onDismiss = { confirmation = null }
+        )
+    }
+}
+
+/** A destructive card action that asks first, with the web's wording. */
+enum class CardConfirmation(val action: PostAction, val title: String, val button: String, val message: String?) {
+    Delete(PostAction.Delete, "Wirklich löschen?", "Löschen bestätigen", null),
+    Block(PostAction.Block, "Wirklich blockieren?", "Blockieren bestätigen", "Ihr verliert gegenseitige Follows."),
+    RemoveFromCrowd(
+        PostAction.RemoveFromCrowd,
+        "Wirklich aus der Crowd entfernen?",
+        "Entfernen bestätigen",
+        "Danach sieht ihn nur noch die Person, die ihn geschrieben hat."
+    )
+}
+
+/** "Noch hat niemand geantwortet" / "1 Mensch hat geantwortet" / "3 Menschen haben geantwortet". */
+fun answeredLabel(replies: Int): String = when (replies) {
+    0 -> "Noch hat niemand geantwortet"
+    1 -> "1 Mensch hat geantwortet"
+    else -> "$replies Menschen haben geantwortet"
+}
+
+/** "22. Oktober 2026, 14:05". */
+fun fullDate(instant: Instant): String = GermanTime.format(instant, "d. MMMM yyyy, HH:mm")
+
+private fun plural(count: Int, one: String, many: String) = "$count ${if (count == 1) one else many}"
+
+/**
+ * The head of a plain carry instead of the author line: „**Mira Sol** hat das geteilt“ (the name opens the
+ * profile) and the repost's „⋯“ menu; the carried Post follows as the card's content.
+ */
+@Composable
+private fun CarrierLine(post: Post, run: (PostAction) -> Unit, onConfirm: (CardConfirmation) -> Unit) {
+    val navigator = LocalNavigator.current
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.Repeat, contentDescription = null, tint = MildcrowdColors.Muted, modifier = Modifier.size(16.dp))
+        Text(
+            buildAnnotatedString {
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MildcrowdColors.Ink)) { append(post.author.displayName) }
+                append(" hat das geteilt")
+            },
+            style = MildcrowdType.Small,
+            color = MildcrowdColors.Muted,
+            modifier = Modifier
+                .weight(1f)
+                .clickable(role = Role.Button) { navigator.open(NetworkRoute.Profile(post.author.username)) }
+                .testTag("post.carrier")
+        )
+        post.viewer?.let { viewer -> PostMenu(post, viewer, run, onConfirm) }
+    }
+}
+
+@Composable
+private fun ReplyContext(post: Post) {
+    val navigator = LocalNavigator.current
+    val reply = post.replyTo
+    if (reply != null) {
+        Text(
+            buildAnnotatedString {
+                append("Antwort an ")
+                withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) { append("@${reply.username}") }
+            },
+            style = MildcrowdType.Small,
+            color = MildcrowdColors.Muted,
+            modifier = Modifier
+                .defaultMinSize(minHeight = 44.dp)
+                .clickable(role = Role.Button) { navigator.open(NetworkRoute.Post(reply.id)) }
+                .padding(vertical = 12.dp)
+        )
+    } else if (post.replyUnavailable) {
+        Text("Antwort auf einen Post, der nicht mehr verfügbar ist", style = MildcrowdType.Small, color = MildcrowdColors.Muted)
+    }
+}
+
+@Composable
+private fun Header(post: Post, isDetail: Boolean, run: (PostAction) -> Unit, onConfirm: (CardConfirmation) -> Unit) {
+    val navigator = LocalNavigator.current
+    val openProfile = { navigator.open(NetworkRoute.Profile(post.author.username)) }
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+        MemberAvatar(post.author, Modifier.clip(CircleShape).clickable(onClick = openProfile).clearAndSetSemantics {})
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                post.author.displayName,
+                style = MildcrowdType.BodyBold,
+                color = MildcrowdColors.Ink,
+                modifier = Modifier.clickable(role = Role.Button, onClick = openProfile)
+            )
+            MetaRow(metaParts(post, isDetail, open = navigator::open))
+        }
+        val viewer = post.viewer
+        if (viewer != null) PostMenu(post, viewer, run, onConfirm)
+    }
+}
+
+/** One part of a card's meta line; [onClick] makes it a link (underlined). */
+internal class MetaPart(val text: String, val tag: String? = null, val description: String? = null, val onClick: (() -> Unit)? = null)
+
+/**
+ * The second line of every card header, the same in all lists (docs/mildcrowd-network.md): „@username · Crowd Name · vor
+ * 2 Std.“, then „bearbeitet“ and „nur Mitglieder“ where they apply. On the Post page the full date instead of the
+ * relative time. Screen readers hear „@name, in Crowd, vor 2 Std., bearbeitet, nur für Mitglieder“.
+ */
+internal fun metaParts(post: Post, isDetail: Boolean, open: (NetworkRoute) -> Unit): List<MetaPart> = listOfNotNull(
+    MetaPart("@${post.author.username}"),
+    post.crowd?.let { crowd -> MetaPart(crowd.name, description = "in ${crowd.name}") { open(NetworkRoute.Crowd(crowd.slug)) } },
+    if (isDetail) {
+        MetaPart(fullDate(post.createdAt))
+    } else {
+        val relative = RelativeTime.format(post.createdAt)
+        MetaPart(relative, tag = "post.open", description = "Zum Post, $relative") { open(NetworkRoute.Post(post.id)) }
+    },
+    MetaPart("bearbeitet").takeIf { post.editedAt != null },
+    MetaPart("nur Mitglieder", description = "nur für Mitglieder").takeIf { post.isMembersOnly }
+)
+
+/** Meta parts with „·“ only between them; screen readers skip the dots and read the parts in order. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun MetaRow(parts: List<MetaPart>) {
+    val meta = MildcrowdType.Small
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        parts.forEachIndexed { index, part ->
+            if (index > 0) Text("·", style = meta, color = MildcrowdColors.Muted, modifier = Modifier.clearAndSetSemantics {})
+            val click = part.onClick
+            Text(
+                if (click == null) {
+                    AnnotatedString(part.text)
+                } else {
+                    buildAnnotatedString { withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) { append(part.text) } }
+                },
+                style = meta,
+                color = MildcrowdColors.Muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .then(if (click == null) Modifier else Modifier.clickable(role = Role.Button, onClick = click))
+                    .then(part.description?.let { text -> Modifier.semantics { contentDescription = text } } ?: Modifier)
+                    .then(part.tag?.let { Modifier.testTag(it) } ?: Modifier)
+            )
+        }
+    }
+}
+
+/** The "⋯" menu: host removal, edit and delete for the author; mute, restrict, block and report for everybody else. */
+@Composable
+private fun PostMenu(post: Post, viewer: Post.Viewer, run: (PostAction) -> Unit, onConfirm: (CardConfirmation) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Box(
+            Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .clickable(role = Role.Button) { open = true }
+                .semantics { contentDescription = "Weitere Aktionen zum Post von ${post.author.displayName}" }
+                .testTag("post.menu"),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Outlined.MoreHoriz, contentDescription = null, tint = MildcrowdColors.Night)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = MildcrowdColors.Paper) {
+            MenuItems(post, viewer, run, close = { open = false }, onConfirm = onConfirm)
+        }
+    }
+}
+
+/** The "⋯" entries, shared by the menu button and the long-press menu. */
+@Composable
+private fun MenuItems(
+    post: Post,
+    viewer: Post.Viewer,
+    run: (PostAction) -> Unit,
+    close: () -> Unit,
+    onConfirm: (CardConfirmation) -> Unit
+) {
+    val navigator = LocalNavigator.current
+    val collections = LocalCollectionActions.current
+    val entries = buildList {
+        // Sammlungen of the Post's crowd: add to one, or take it out where the viewer may.
+        val crowd = post.crowd
+        if (crowd != null && post.replyTo == null && viewer.canInteract) {
+            add(MenuEntry("Zu Sammlung hinzufügen …") { navigator.present(NetworkRoute.CollectPost(post.id, crowd.slug)) })
+        }
+        if (collections != null) {
+            post.collections.filter { it.canRemove }.forEach { collection ->
+                add(MenuEntry("Aus „${collection.name}“ entfernen") { collections.remove(post, collection.id) })
+            }
+        }
+        if (viewer.canRemoveFromCrowd) {
+            add(
+                MenuEntry("Aus Crowd entfernen …", destructive = true) {
+                    onConfirm(CardConfirmation.RemoveFromCrowd)
+                }
+            )
+        }
+        if (viewer.canEdit) add(MenuEntry("Bearbeiten") { navigator.open(NetworkRoute.EditPost(post.id)) })
+        if (viewer.canDelete) {
+            add(MenuEntry("Löschen …", destructive = true) { onConfirm(CardConfirmation.Delete) })
+        } else {
+            if (!viewer.isAuthor) {
+                add(
+                    MenuEntry(if (viewer.hasMutedAuthor) "Nicht mehr stumm" else "Stummschalten") {
+                        run(if (viewer.hasMutedAuthor) PostAction.Unmute else PostAction.Mute)
+                    }
+                )
+                add(
+                    MenuEntry(if (viewer.hasRestrictedAuthor) "Nicht mehr einschränken" else "Einschränken") {
+                        run(if (viewer.hasRestrictedAuthor) PostAction.Unrestrict else PostAction.Restrict)
+                    }
+                )
+                add(MenuEntry("Blockieren …", destructive = true) { onConfirm(CardConfirmation.Block) })
+            }
+            add(MenuEntry("Melden") { navigator.open(AccountRoute.Report(post.url)) })
+        }
+    }
+    entries.forEach { entry ->
+        DropdownMenuItem(
+            text = {
+                Text(
+                    entry.title,
+                    style = MildcrowdType.Body,
+                    color = if (entry.destructive) MildcrowdColors.Danger else MildcrowdColors.Ink
+                )
+            },
+            onClick = {
+                close()
+                entry.action()
+            }
+        )
+    }
+}
+
+private class MenuEntry(val title: String, val destructive: Boolean = false, val action: () -> Unit)
+
+/** Long press on a card: the action row's actions with icons, sharing, then the "⋯" entries. */
+@Composable
+private fun ContextMenuItems(
+    post: Post,
+    viewer: Post.Viewer,
+    run: (PostAction) -> Unit,
+    reply: () -> Unit,
+    close: () -> Unit,
+    onConfirm: (CardConfirmation) -> Unit
+) {
+    val navigator = LocalNavigator.current
+    val context = LocalContext.current
+
+    @Composable
+    fun item(title: String, icon: ImageVector, action: () -> Unit) {
+        DropdownMenuItem(
+            text = { Text(title, style = MildcrowdType.Body, color = MildcrowdColors.Ink) },
+            leadingIcon = { Icon(icon, contentDescription = null, tint = MildcrowdColors.Night) },
+            onClick = {
+                close()
+                action()
+            }
+        )
+    }
+    if (viewer.canInteract && viewer.canReply) item("Antworten", Icons.AutoMirrored.Outlined.Reply, reply)
+    if (viewer.canInteract &&
+        viewer.canCarry
+    ) {
+        item("Teilen", Icons.Outlined.Repeat) { navigator.open(NetworkRoute.CarryPost(post.id, quote = viewer.canQuote)) }
+    }
+    if (viewer.canInteract) {
+        item(
+            if (viewer.reacted) "Reaktion zurücknehmen" else "Reagieren",
+            if (viewer.reacted) Icons.Outlined.HeartBroken else Icons.Outlined.FavoriteBorder
+        ) {
+            run(if (viewer.reacted) PostAction.Unreact else PostAction.React)
+        }
+    }
+    item(
+        if (viewer.bookmarked) "Aus Merkliste entfernen" else "Merken",
+        if (viewer.bookmarked) Icons.Outlined.BookmarkRemove else Icons.Outlined.BookmarkBorder
+    ) {
+        run(if (viewer.bookmarked) PostAction.Unbookmark else PostAction.Bookmark)
+    }
+    item("Link teilen", Icons.Outlined.Share) { share(context, post.url) }
+    HorizontalDivider(color = MildcrowdColors.PaperLine)
+    MenuItems(post, viewer, run, close, onConfirm)
+}
+
+@Composable
+private fun ActionRow(post: Post, viewer: Post.Viewer, run: (PostAction) -> Unit, reply: () -> Unit) {
+    val navigator = LocalNavigator.current
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (viewer.canInteract) {
+            if (viewer.canReply) {
+                ActionTile(
+                    "Antworten",
+                    Icons.AutoMirrored.Outlined.Reply,
+                    MildcrowdColors.Night,
+                    "post.action.Antworten",
+                    onClick = reply
+                )
+            }
+            if (viewer.canCarry) {
+                ActionTile("Teilen", Icons.Outlined.Repeat, MildcrowdColors.Night, "post.action.Weitertragen") {
+                    navigator.open(NetworkRoute.CarryPost(post.id, quote = viewer.canQuote))
+                }
+            }
+            ActionTile(
+                if (viewer.reacted) "Reagiert" else "Reagieren",
+                if (viewer.reacted) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                if (viewer.reacted) MildcrowdColors.SunText else MildcrowdColors.Night,
+                "post.react",
+                isOn = viewer.reacted
+            ) { run(if (viewer.reacted) PostAction.Unreact else PostAction.React) }
+        }
+        ActionTile(
+            if (viewer.bookmarked) "Gemerkt" else "Merken",
+            if (viewer.bookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+            if (viewer.bookmarked) MildcrowdColors.SpringText else MildcrowdColors.Night,
+            "post.bookmark",
+            isOn = viewer.bookmarked,
+            label = if (viewer.bookmarked) "Aus Merkliste entfernen" else "Post merken"
+        ) { run(if (viewer.bookmarked) PostAction.Unbookmark else PostAction.Bookmark) }
+    }
+}
+
+/** An icon-over-label tile of the action row. */
+@Composable
+private fun RowScope.ActionTile(
+    title: String,
+    icon: ImageVector,
+    tint: Color,
+    tag: String,
+    isOn: Boolean = false,
+    label: String? = null,
+    onClick: () -> Unit
+) {
+    Column(
+        Modifier
+            .weight(1f)
+            .defaultMinSize(minHeight = 48.dp)
+            .pressable(onClick)
+            .testTag(tag)
+            // The tap itself comes from pressable(); TalkBack reads the label and the state.
+            .clearAndSetSemantics {
+                contentDescription = label ?: title
+                role = Role.Button
+                selected = isOn
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+        Text(title, style = MildcrowdType.Caption, color = tint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun Stats(post: Post) {
+    val stats = post.stats ?: return
+    val reactions = plural(stats.reactions, "Reaktion", "Reaktionen")
+    val shape = RoundedCornerShape(MildcrowdRadius.TILE.dp)
+    if (post.isQuestion && post.viewer?.isAuthor == true) {
+        Row(
+            Modifier.fillMaxWidth().background(MildcrowdColors.Sand, shape).padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.AutoMirrored.Outlined.Reply,
+                contentDescription = null,
+                tint = MildcrowdColors.SpringText,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(answeredLabel(stats.replies)) }
+                    withStyle(MildcrowdType.Caption.toSpanStyle()) { append(" (nur du siehst diese Zahlen · $reactions)") }
+                },
+                style = MildcrowdType.Small,
+                color = MildcrowdColors.Night
+            )
+        }
+    } else {
+        Row(
+            Modifier.fillMaxWidth().background(
+                MildcrowdColors.Sand,
+                shape
+            ).padding(horizontal = 16.dp, vertical = 10.dp).testTag("post.stats"),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(Icons.Outlined.VisibilityOff, contentDescription = null, tint = MildcrowdColors.Night, modifier = Modifier.size(18.dp))
+            Text(
+                buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("Nur du siehst diese Zahlen: ") }
+                    append("$reactions, ${plural(stats.replies, "Antwort", "Antworten")}")
+                },
+                style = MildcrowdType.Small,
+                color = MildcrowdColors.Ink
+            )
+        }
+    }
+}
+
+/**
+ * "Zurückgehalten und dem Moderationsteam gemeldet" for the author of a held Post. Holding never locks the account
+ * (a lock is always a human decision), so the notice speaks only about the Post.
+ */
+@Composable
+private fun HeldNotice(held: Post.Held) {
+    val shape = RoundedCornerShape(MildcrowdRadius.TILE.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(MildcrowdColors.Dune, shape)
+            .border(1.dp, MildcrowdColors.Sun.copy(alpha = 0.4f), shape)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text("Zurückgehalten und dem Moderationsteam gemeldet", style = MildcrowdType.SmallBold, color = MildcrowdColors.Night)
+        Text(
+            "Unsere automatische Prüfung hat in diesem Post möglicherweise ${held.reason} erkannt. Bis ein Mensch aus dem " +
+                "Moderationsteam ihn geprüft hat, siehst nur du ihn – in der Regel innerhalb von ${held.reviewHours} Stunden.",
+            style = MildcrowdType.Small,
+            color = MildcrowdColors.Ink
+        )
+        held.checkReason?.let { Text("Begründung der Prüfung: „$it“", style = MildcrowdType.Small, color = MildcrowdColors.Ink2) }
+        Text(
+            "Ist alles in Ordnung, wird er für alle sichtbar. Du kannst ihn jederzeit selbst löschen; dein Konto bleibt offen.",
+            style = MildcrowdType.Small,
+            color = MildcrowdColors.Ink2
+        )
+    }
+}
+
+/**
+ * The images of a card; covered images load only after "Bild anzeigen", locked ones never. A tap opens the image full
+ * screen.
+ */
+@Composable
+private fun PostImages(post: Post) {
+    if (post.imagesLocked) {
+        DashedNote { Text("Bilder gesperrt.", style = MildcrowdType.Small, color = MildcrowdColors.Ink2) }
+        return
+    }
+    if (post.images.isNotEmpty()) ImageGrid(post.images, post.id)
+}
+
+/**
+ * Images of a Post in one or two columns (the cards, the Jahrbuch); covered ones load only after "Bild anzeigen". A
+ * tap opens the image full screen. [key] keeps the uncovered images per Post.
+ */
+@Composable
+fun ImageGrid(images: List<Post.Image>, key: Int) {
+    var revealed by rememberSaveable(key) { mutableStateOf(setOf<Int>()) }
+    var viewing by remember { mutableStateOf<Post.Image?>(null) }
+    val shape = RoundedCornerShape(MildcrowdRadius.TILE.dp)
+    val columns = if (images.size > 1) 2 else 1
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        images.chunked(columns).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { image ->
+                    val cell = Modifier.weight(1f).aspectRatio(image.aspectRatio)
+                    if (image.covered && image.id !in revealed) {
+                        CoveredImage(image, cell) { revealed = revealed + image.id }
+                    } else {
+                        Box(
+                            cell
+                                .clip(shape)
+                                .background(MildcrowdColors.Dune)
+                                .clickable(onClickLabel = "Bild vergrößern", role = Role.Image) { viewing = image }
+                                .semantics { contentDescription = image.alt }
+                        ) {
+                            AuthorizedImage(
+                                image.url,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxWidth().aspectRatio(image.aspectRatio)
+                            )
+                        }
+                    }
+                }
+                if (row.size < columns) Box(Modifier.weight(1f))
+            }
+        }
+    }
+    viewing?.let { start ->
+        ImageViewer(images.filter { !it.covered || it.id in revealed }, start) { viewing = null }
+    }
+}
+
+/** An image of a person whose images the viewer uncovers on request. */
+@Composable
+private fun CoveredImage(image: Post.Image, modifier: Modifier, reveal: () -> Unit) {
+    val navigator = LocalNavigator.current
+    Column(
+        modifier.background(MildcrowdColors.Dune, RoundedCornerShape(MildcrowdRadius.TILE.dp)).padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
+    ) {
+        Icon(Icons.Outlined.VisibilityOff, contentDescription = null, tint = MildcrowdColors.Night)
+        MildcrowdButton(
+            "Bild anzeigen",
+            onClick = reveal,
+            fullWidth = false,
+            modifier = Modifier.semantics { contentDescription = "Bild anzeigen: ${image.alt}" }
+        )
+        UnderlinedLink(
+            "Einstellung ändern",
+            { navigator.open(AccountRoute.Privacy) },
+            style = MildcrowdType.Caption,
+            color = MildcrowdColors.Ink2
+        )
+    }
+}
+
+/** The carried Post, or its placeholder. */
+@Composable
+private fun CarriedView(carried: Post.Carried) {
+    when (carried.state) {
+        Post.Carried.State.Muted -> DashedNote {
+            Text("Post einer stummgeschalteten Person.", style = MildcrowdType.Small, color = MildcrowdColors.Muted)
+        }
+
+        Post.Carried.State.Unavailable -> DashedNote {
+            Text("Dieser Post ist nicht mehr verfügbar.", style = MildcrowdType.Small, color = MildcrowdColors.Muted)
+        }
+
+        // Visible: the original, when the server sent it.
+        else -> carried.post?.let { CarriedOriginal(it.author, it.segments, it.id) }
+    }
+}
+
+/**
+ * A carried Post in its box: author and text – in a card shortened and linking to the original, on the carry page in
+ * full.
+ */
+@Composable
+fun CarriedOriginal(author: Member, segments: List<TextSegment>, postId: Int? = null) {
+    val navigator = LocalNavigator.current
+    val shape = RoundedCornerShape(MildcrowdRadius.TILE.dp)
+    Column(
+        Modifier.fillMaxWidth().background(MildcrowdColors.Paper, shape).border(1.dp, MildcrowdColors.DuneLine, shape).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        val line = buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MildcrowdColors.Night)) { append(author.displayName) }
+            withStyle(SpanStyle(color = MildcrowdColors.Muted)) { append(" @${author.username}") }
+        }
+        Text(
+            line,
+            style = MildcrowdType.Small,
+            modifier = if (postId != null) {
+                Modifier.defaultMinSize(minHeight = 44.dp).clickable(role = Role.Button) {
+                    navigator.open(NetworkRoute.Post(postId))
+                }.padding(vertical = 12.dp)
+            } else {
+                Modifier
+            }
+        )
+        RichTextView(segments, maxLines = if (postId == null) Int.MAX_VALUE else 4)
+    }
+}
+
+/** The short conversation under a Start card. */
+@Composable
+private fun ConversationView(post: Post, conversation: Post.Conversation) {
+    val navigator = LocalNavigator.current
+    val shape = RoundedCornerShape(MildcrowdRadius.TILE.dp)
+    Column(
+        Modifier.fillMaxWidth().background(
+            MildcrowdColors.Sand.copy(alpha = 0.4f),
+            shape
+        ).border(1.dp, MildcrowdColors.DuneLine, shape).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                conversation.title.uppercase(),
+                style = MildcrowdType.Caption.copy(fontWeight = FontWeight.Bold, letterSpacing = MildcrowdType.Caption.letterSpacing),
+                color = MildcrowdColors.Muted,
+                modifier = Modifier.weight(1f)
+            )
+            if (conversation.hasMore) {
+                Text(
+                    "weitere Antworten",
+                    style = MildcrowdType.Caption.copy(fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline),
+                    color = MildcrowdColors.Night,
+                    modifier = Modifier.clickable(role = Role.Button) { navigator.open(NetworkRoute.Post(post.id)) }
+                )
+            }
+        }
+        conversation.replies.forEach { reply ->
+            val openProfile = { navigator.open(NetworkRoute.Profile(reply.author.username)) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                MemberAvatar(
+                    reply.author,
+                    Modifier.clip(CircleShape).clickable(onClick = openProfile).clearAndSetSemantics {
+                    },
+                    size = 32.dp
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        buildAnnotatedString {
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MildcrowdColors.Ink)) {
+                                append(reply.author.displayName)
+                            }
+                            withStyle(MildcrowdType.Caption.toSpanStyle().copy(color = MildcrowdColors.Muted)) {
+                                append(" @${reply.author.username}")
+                            }
+                        },
+                        style = MildcrowdType.Small,
+                        modifier = Modifier.clickable(role = Role.Button, onClick = openProfile)
+                    )
+                    RichTextView(reply.segments, style = MildcrowdType.Small, color = MildcrowdColors.Ink2)
+                }
+            }
+        }
+    }
+}
+
+/** The colour dot of a crowd next to its name (side card "In der Crowd"). */
+@Composable
+fun CrowdDot(color: String, modifier: Modifier = Modifier) {
+    Box(modifier.size(40.dp).background(AvatarTint.surface(color), CircleShape))
+}
+
+/** „In Sammlung: Rezepte, Tipps“ – each opens its collection in the crowd. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun PostCollections(slug: String, collections: List<Post.CollectionRef>) {
+    val navigator = LocalNavigator.current
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+        Text("In Sammlung:", style = MildcrowdType.Small, color = MildcrowdColors.Ink2)
+        collections.forEach { collection ->
+            Text(
+                collection.name,
+                style = MildcrowdType.SmallBold.copy(textDecoration = TextDecoration.Underline),
+                color = MildcrowdColors.Night,
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 44.dp)
+                    .clickable(role = Role.Button) { navigator.open(NetworkRoute.Crowd(slug, collection = collection.id)) }
+                    .padding(vertical = 12.dp)
+                    .testTag("post.collection.${collection.id}")
+            )
+        }
+    }
+}

@@ -1,12 +1,12 @@
 plugins {
-    alias(libs.plugins.oasis.android.feature)
+    alias(libs.plugins.mildcrowd.android.feature)
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.live"
+    namespace = "de.velwebsolutions.mildcrowd.live"
 }
 
-// Hinweise, their settings, the live counters of the app shell and push (OasisLive on iOS). Push comes through Firebase
+// Hinweise, their settings, the live counters of the app shell and push (MildcrowdLive on iOS). Push comes through Firebase
 // Cloud Messaging: with google-services.json in the app the FCM token is registered with the server (PushDeviceController,
 // platform android); without it nothing is set up.
 dependencies {

@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:name=".OasisApplication"
+        android:name=".MildcrowdApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
@@ -16,7 +16,7 @@
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="33"
-        android:theme="@style/Theme.Oasis">
+        android:theme="@style/Theme.Mildcrowd">
 
         <activity
             android:name=".MainActivity"
@@ -50,7 +50,6 @@
                 <data android:pathPrefix="/tropfen/" />
                 <data android:pathPrefix="/profil/" />
                 <data android:pathPrefix="/crowds/" />
-                <data android:pathPrefix="/oasen/" />
                 <data android:pathPrefix="/einladung/" />
                 <data android:pathPrefix="/gemeinsam/" />
                 <data android:pathPrefix="/email/bestaetigen/" />
