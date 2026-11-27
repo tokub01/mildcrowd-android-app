@@ -1,0 +1,111 @@
+package de.velwebsolutions.mildcrowd.live.data
+
+import de.velwebsolutions.mildcrowd.core.network.ApiClient
+import de.velwebsolutions.mildcrowd.core.network.Confirmed
+import de.velwebsolutions.mildcrowd.core.network.Page
+import de.velwebsolutions.mildcrowd.live.api.FcmRegistrationBody
+import de.velwebsolutions.mildcrowd.live.api.Hint
+import de.velwebsolutions.mildcrowd.live.api.HintSettings
+import de.velwebsolutions.mildcrowd.live.api.HintSettingsBody
+import de.velwebsolutions.mildcrowd.live.api.LiveAppConfig
+import de.velwebsolutions.mildcrowd.live.api.LiveCountsData
+import de.velwebsolutions.mildcrowd.live.api.LiveService
+import de.velwebsolutions.mildcrowd.live.api.PauseBody
+import de.velwebsolutions.mildcrowd.live.api.PushDevice
+import de.velwebsolutions.mildcrowd.live.api.QuietModeBody
+import de.velwebsolutions.mildcrowd.live.api.SwitchBody
+import javax.inject.Inject
+
+/** Hinweise, their settings, push devices and the counters of the app shell (LiveAPI on iOS). */
+interface LiveRepository {
+    /** One page of hints (20 per page); opening it marks its hints read on the server. */
+    suspend fun hints(page: Int): Page<Hint>
+
+    /** "Alle als gelesen markieren"; returns the confirmation. */
+    suspend fun markAllRead(): String
+
+    /**
+     * Hinweise einstellen. Asked for as Android (`platform=android`), like every answer with the settings: push is then
+     * available while the server sends FCM, and only then is the `chat_push` switch there.
+     */
+    suspend fun settings(): HintSettings
+
+    /** Saves the switches, the daily e-mail and the quiet hours at once (the screen sends them after every change). */
+    suspend fun save(settings: HintSettings): Confirmed<HintSettings>
+
+    suspend fun pause(days: Int): Confirmed<HintSettings>
+
+    suspend fun resume(): Confirmed<HintSettings>
+
+    /** The Ruhemodus for `1h`, `8h`, `morning` or `manual`; the message is its status text. */
+    suspend fun startQuietMode(mode: String): Confirmed<HintSettings>
+
+    /** „Beenden“: „Der Ruhemodus ist beendet.“ */
+    suspend fun endQuietMode(): Confirmed<HintSettings>
+
+    /** A chat switch of the privacy settings (`chat_push`, `chat_email`); returns the status text. */
+    suspend fun setChatSwitch(key: String, on: Boolean): String
+
+    /** Removes an app installation or a browser from the push devices; returns the confirmation. */
+    suspend fun removeDevice(device: PushDevice): String
+
+    suspend fun removeAppDevice(id: Int)
+
+    /** Registers this installation's FCM token (`POST push/devices` with platform android, see PushRegistrar). */
+    suspend fun registerDevice(token: String): PushDevice
+
+    suspend fun counts(): LiveCountsData
+
+    suspend fun appConfig(): LiveAppConfig
+}
+
+/** [LiveRepository] over the Mildcrowd API. */
+class DefaultLiveRepository @Inject constructor(client: ApiClient) : LiveRepository {
+    private val service = client.create<LiveService>()
+
+    override suspend fun hints(page: Int) = service.hints(page)
+
+    override suspend fun markAllRead() = service.markAllRead().message
+
+    override suspend fun settings() = service.settings(PLATFORM).data
+
+    override suspend fun save(settings: HintSettings) = service.save(
+        PLATFORM,
+        HintSettingsBody(
+            kinds = settings.kinds.associate { it.key to it.enabled },
+            digest = settings.digest,
+            weeklyLetterEmail = settings.weeklyLetterEmail,
+            quietEnabled = settings.quietEnabled,
+            quietFrom = settings.quietFrom,
+            quietUntil = settings.quietUntil
+        )
+    )
+
+    override suspend fun pause(days: Int) = service.pause(PLATFORM, PauseBody(days))
+
+    override suspend fun resume() = service.resume(PLATFORM)
+
+    override suspend fun startQuietMode(mode: String) = service.startQuietMode(PLATFORM, QuietModeBody(mode))
+
+    override suspend fun endQuietMode() = service.endQuietMode(PLATFORM)
+
+    override suspend fun setChatSwitch(key: String, on: Boolean) = service.setChatSwitch(key, SwitchBody(on)).message
+
+    override suspend fun removeDevice(device: PushDevice) =
+        if (device.type == "browser") service.removeBrowser(device.id).message else service.removeAppDevice(device.id).message
+
+    override suspend fun removeAppDevice(id: Int) {
+        service.removeAppDevice(id)
+    }
+
+    override suspend fun registerDevice(token: String) = service.registerDevice(FcmRegistrationBody(token, platform = PLATFORM)).data
+
+    override suspend fun counts() = service.counts().data
+
+    override suspend fun appConfig() = service.appConfig(platform = PLATFORM).data
+
+    private companion object {
+        /** The platform the server answers push for (FCM; without it, it answers for iOS and APNs). */
+        const val PLATFORM = "android"
+    }
+}

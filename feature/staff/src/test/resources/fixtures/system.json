@@ -66,7 +66,7 @@
   "backups": [
    "Neueste Sicherung: noch keine (local, 14 Tage aufbewahrt)",
    "Sicherungsschlüssel: gesetzt",
-   "Überwachungs-URL /gesundheit: aktiv (mit OASIS_HEALTH_TOKEN)"
+   "Überwachungs-URL /gesundheit: aktiv (mit MILDCROWD_HEALTH_TOKEN)"
   ],
   "bot_refusals": [],
   "heartbeats": []

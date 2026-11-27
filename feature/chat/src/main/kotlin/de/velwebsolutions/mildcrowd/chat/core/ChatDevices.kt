@@ -1,0 +1,141 @@
+package de.velwebsolutions.mildcrowd.chat.core
+
+import de.velwebsolutions.mildcrowd.chat.api.DeviceLinkRequest
+import de.velwebsolutions.mildcrowd.chat.api.DeviceUnlockRow
+import de.velwebsolutions.mildcrowd.chat.api.StoredIdentity
+import de.velwebsolutions.mildcrowd.chatcrypto.ChatIdentity
+import de.velwebsolutions.mildcrowd.chatcrypto.LinkKeyPair
+import de.velwebsolutions.mildcrowd.chatcrypto.approveLink
+import de.velwebsolutions.mildcrowd.chatcrypto.checkNumber
+import de.velwebsolutions.mildcrowd.chatcrypto.createLinkKeyPair
+import de.velwebsolutions.mildcrowd.chatcrypto.lockForDevice
+import de.velwebsolutions.mildcrowd.chatcrypto.openLinkApproval
+import de.velwebsolutions.mildcrowd.chatcrypto.unlockWithDeviceSecret
+import kotlinx.coroutines.withContext
+
+/**
+ * "Mit Fingerabdruck entsperren" and "Mit anderem Gerät freigeben" (client/device-unlock.js, client/device-link.js) with
+ * the app's keystore secret in place of the browser's passkey PRF secret. The server rows are identical, so web, iOS and
+ * Android list each other's devices and can hand the chat to each other.
+ */
+class ChatDevices(private val context: ChatContext) {
+    private val vault get() = context.vault
+    private val crypto get() = context.crypto
+    private val api get() = context.repository
+    private val secrets get() = context.secrets
+
+    /** Whether this device can use a strong biometric at all. */
+    val isAvailable: Boolean get() = secrets.isAvailable()
+
+    /** This device's row among the member's devices, if it was set up here. */
+    suspend fun ownRow(rows: List<DeviceUnlockRow>): DeviceUnlockRow? {
+        val credential = secrets.credentialId(vault.userId) ?: return null
+        return rows.firstOrNull { it.credentialId == credential }
+    }
+
+    /**
+     * First use without a passphrase: the secret first (nothing is stored when the device cannot), then fresh keys
+     * published without a passphrase copy, then the device copy. A failed copy does not throw published keys away: they
+     * stay open and [ChatKeyringException.DeviceCopyNotStored] says so, so the member can still keep a copy; the keystore
+     * secret stays too, since the server may have stored the row before its answer got lost. Published while Mildcrowd went
+     * to the background, they become the stored identity, to be unlocked with the device copy on return (keys never stay
+     * open in the background: without a copy they are gone then).
+     * @return the stored identity, or null if the vault was locked meanwhile or Mildcrowd is in the background.
+     */
+    suspend fun setUpWithDevice(): StoredIdentity? {
+        val generation = vault.generation
+        val device = secrets.create(vault.userId)
+        val identity = crypto.createIdentity()
+        val stored = try {
+            api.saveIdentity(null, crypto.exportPublicKeys(identity))
+        } catch (error: Exception) {
+            identity.wipe()
+            secrets.delete(vault.userId)
+            throw error
+        }
+        val copied = runCatching { storeCopy(identity, device) }.isSuccess
+        if (!vault.unlock(identity, generation)) {
+            // Only the background stood in the way (a lock or another member counts up the generation).
+            if (generation == vault.generation) vault.setStoredIdentity(stored)
+            return null
+        }
+        vault.setStoredIdentity(stored)
+        if (!copied) throw ChatKeyringException.DeviceCopyNotStored
+        return stored
+    }
+
+    /** Add this device to the unlocked chat. */
+    suspend fun register(): DeviceUnlockRow {
+        val identity = vault.identity ?: throw ChatKeyringException.DeviceUnlockUnsupported
+        val device = secrets.create(vault.userId)
+        try {
+            return storeCopy(identity, device)
+        } catch (error: Exception) {
+            secrets.delete(vault.userId)
+            throw error
+        }
+    }
+
+    private suspend fun storeCopy(identity: ChatIdentity, device: DeviceSecret): DeviceUnlockRow {
+        val copy = try {
+            withContext(context.cryptoDispatcher) { crypto.lockForDevice(identity, device.secret) }
+        } finally {
+            device.secret.fill(0)
+        }
+        return api.saveDeviceUnlock(device.credentialId, crypto.toBase64(crypto.randomBytes(32)), context.deviceLabel, copy)
+    }
+
+    /** Unlock with the biometric prompt: the keystore secret opens this device's copy (same checks as every unlock). */
+    suspend fun unlock(stored: StoredIdentity, rows: List<DeviceUnlockRow>): Boolean {
+        val row = ownRow(rows) ?: throw ChatKeyringException.DeviceUnlockUnsupported
+        val generation = vault.generation
+        val secret = secrets.secret(vault.userId, "Chats entsperren") ?: throw ChatKeyringException.DeviceUnlockUnsupported
+        val identity = try {
+            withContext(context.cryptoDispatcher) { crypto.unlockWithDeviceSecret(row.lockedIdentity, secret) }
+        } finally {
+            secret.fill(0)
+        }
+        return context.keyring.adopt(identity, stored, generation)
+    }
+
+    /** Remove a device; this device's own keystore secret goes with its row. */
+    suspend fun remove(row: DeviceUnlockRow) {
+        api.deleteDeviceUnlock(row.id)
+        if (secrets.credentialId(vault.userId) == row.credentialId) secrets.delete(vault.userId)
+    }
+
+    // Device links
+
+    /** A pending request of this device. */
+    class PendingLink(val id: String, val check: String, internal val keyPair: LinkKeyPair)
+
+    /** Asking device: create the one-time key and the request. */
+    suspend fun requestLink(): PendingLink {
+        val keyPair = crypto.createLinkKeyPair()
+        val created = api.requestDeviceLink(keyPair.publicKeyBase64, context.deviceLabel)
+        return PendingLink(created.id, crypto.checkNumber(keyPair.publicKeyBase64), keyPair)
+    }
+
+    /** Asking device: null while not approved; true once the chat is open. */
+    suspend fun pickUp(link: PendingLink, stored: StoredIdentity): Boolean? {
+        val generation = vault.generation
+        val approval = api.deviceLink(link.id) ?: return null
+        val identity = withContext(context.cryptoDispatcher) {
+            crypto.openLinkApproval(approval.lockedIdentity, approval.sealedKey, link.keyPair)
+        }
+        return context.keyring.adopt(identity, stored, generation)
+    }
+
+    /** "Abbrechen": wipes the one-time key and withdraws the request (best effort). */
+    suspend fun cancel(link: PendingLink) {
+        link.keyPair.wipe()
+        runCatching { api.rejectDeviceLink(link.id) }
+    }
+
+    /** Unlocked device: hand the keys to a request whose check number the member confirmed. */
+    suspend fun approve(request: DeviceLinkRequest) {
+        val identity = vault.identity ?: throw ChatKeyringException.DeviceUnlockUnsupported
+        val approval = withContext(context.cryptoDispatcher) { crypto.approveLink(identity, request.publicKey) }
+        api.approveDeviceLink(request.id, approval.lockedIdentity, approval.sealedKey)
+    }
+}

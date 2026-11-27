@@ -1,0 +1,76 @@
+package de.velwebsolutions.mildcrowd.app.ui
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import de.velwebsolutions.mildcrowd.app.shell.LiveShell
+import de.velwebsolutions.mildcrowd.app.shell.PurchaseObserver
+import de.velwebsolutions.mildcrowd.core.auth.Session
+import de.velwebsolutions.mildcrowd.core.auth.SessionState
+import de.velwebsolutions.mildcrowd.network.NetworkSignals
+import javax.inject.Inject
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+/** The app shell's state: the session, the live counters and the network confirmation (MildcrowdAppEnvironment on iOS). */
+@HiltViewModel
+class RootViewModel @Inject constructor(
+    private val session: Session,
+    val live: LiveShell,
+    private val purchases: PurchaseObserver
+) : ViewModel() {
+    /** Signed in, out or still restoring. */
+    val state: StateFlow<SessionState> = session.state
+
+    /** The confirmation of a network action whose screen has closed. */
+    val confirmation = NetworkSignals.confirmation
+    private var liveJob: Job? = null
+    private var liveUserId: Int? = null
+
+    init {
+        session.addOnSignedOut(::signedOut)
+        viewModelScope.launch { session.restore() }
+    }
+
+    /**
+     * Every sign-out – the "Mehr" menu, Einstellungen, deleting the account, a revoked token: live stops and who went
+     * live is forgotten, so the next sign-in goes live again, also as the same member.
+     */
+    private fun signedOut() {
+        liveUserId = null
+        liveJob?.cancel()
+        live.stop()
+    }
+
+    /** The tabs appeared for this member: go live and listen for Play purchases (once per member and sign-in). */
+    fun tabsAppeared(userId: Int) {
+        if (liveUserId == userId) return
+        liveUserId = userId
+        liveJob?.cancel()
+        liveJob = viewModelScope.launch {
+            launch { live.start(userId) }
+            launch { purchases.observe() }
+        }
+    }
+
+    /** The app came to the front. */
+    fun foreground() {
+        viewModelScope.launch { live.foreground() }
+    }
+
+    /** Ask the server again for the member (back in the foreground without a membership). */
+    fun refreshMe() {
+        viewModelScope.launch { session.refreshMe() }
+    }
+
+    /** "Abmelden" in the "Mehr" menu; the session's sign-out listener stops live. */
+    fun signOut() {
+        viewModelScope.launch { session.signOut() }
+    }
+
+    /** The confirmation snackbar was shown. */
+    fun clearConfirmation() {
+        NetworkSignals.confirmation.value = null
+    }
+}

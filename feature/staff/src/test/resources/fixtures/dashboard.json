@@ -39,7 +39,7 @@
      "label": "Token in 0 Anfragen"
     }
    ],
-   "note": "Für Prozentwert und Warnmail bei 75 % dein Mistral-Ausgabenlimit als OASIS_MISTRAL_MONTHLY_BUDGET eintragen."
+   "note": "Für Prozentwert und Warnmail bei 75 % dein Mistral-Ausgabenlimit als MILDCROWD_MISTRAL_MONTHLY_BUDGET eintragen."
   },
   "members": {
    "tiles": [
@@ -95,8 +95,8 @@
      "count": 0
     },
     {
-     "tier": "oase",
-     "name": "Oase",
+     "tier": "mittendrin",
+     "name": "Mittendrin",
      "count": 1
     },
     {
@@ -110,7 +110,7 @@
    "tiles": [
     {
      "value": "24",
-     "label": "Tropfen im Zeitraum"
+     "label": "Posts im Zeitraum"
     },
     {
      "value": "8",
@@ -118,11 +118,11 @@
     },
     {
      "value": "24",
-     "label": "Tropfen insgesamt"
+     "label": "Posts insgesamt"
     },
     {
      "value": "4",
-     "label": "Oasen"
+     "label": "Crowds"
     }
    ],
    "weeks": [

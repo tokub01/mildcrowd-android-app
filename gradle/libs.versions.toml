@@ -112,7 +112,7 @@ kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 play-publisher = { id = "com.github.triplet.play", version.ref = "playPublisher" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
-oasis-android-application = { id = "oasis.android.application" }
-oasis-android-library = { id = "oasis.android.library" }
-oasis-android-feature = { id = "oasis.android.feature" }
-oasis-jvm-library = { id = "oasis.jvm.library" }
+mildcrowd-android-application = { id = "mildcrowd.android.application" }
+mildcrowd-android-library = { id = "mildcrowd.android.library" }
+mildcrowd-android-feature = { id = "mildcrowd.android.feature" }
+mildcrowd-jvm-library = { id = "mildcrowd.jvm.library" }

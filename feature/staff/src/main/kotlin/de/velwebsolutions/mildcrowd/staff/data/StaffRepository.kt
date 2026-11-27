@@ -1,0 +1,208 @@
+package de.velwebsolutions.mildcrowd.staff.data
+
+import de.velwebsolutions.mildcrowd.core.network.ApiClient
+import de.velwebsolutions.mildcrowd.core.network.Confirmed
+import de.velwebsolutions.mildcrowd.core.network.Page
+import de.velwebsolutions.mildcrowd.staff.api.AdminDashboard
+import de.velwebsolutions.mildcrowd.staff.api.AdminIdea
+import de.velwebsolutions.mildcrowd.staff.api.AssignBody
+import de.velwebsolutions.mildcrowd.staff.api.BreachRegister
+import de.velwebsolutions.mildcrowd.staff.api.CaseSummary
+import de.velwebsolutions.mildcrowd.staff.api.ComplaintDetail
+import de.velwebsolutions.mildcrowd.staff.api.ComplaintReview
+import de.velwebsolutions.mildcrowd.staff.api.DataBreach
+import de.velwebsolutions.mildcrowd.staff.api.IdeaStatusInput
+import de.velwebsolutions.mildcrowd.staff.api.ModerationCaseDetail
+import de.velwebsolutions.mildcrowd.staff.api.ModerationOverview
+import de.velwebsolutions.mildcrowd.staff.api.MollieLookup
+import de.velwebsolutions.mildcrowd.staff.api.NewBreach
+import de.velwebsolutions.mildcrowd.staff.api.NoteBody
+import de.velwebsolutions.mildcrowd.staff.api.PasswordBody
+import de.velwebsolutions.mildcrowd.staff.api.PaymentPage
+import de.velwebsolutions.mildcrowd.staff.api.PaymentRecord
+import de.velwebsolutions.mildcrowd.staff.api.QueueFilter
+import de.velwebsolutions.mildcrowd.staff.api.ReferenceBody
+import de.velwebsolutions.mildcrowd.staff.api.RefundBody
+import de.velwebsolutions.mildcrowd.staff.api.RoleBody
+import de.velwebsolutions.mildcrowd.staff.api.RolePage
+import de.velwebsolutions.mildcrowd.staff.api.RoleUser
+import de.velwebsolutions.mildcrowd.staff.api.SearchBody
+import de.velwebsolutions.mildcrowd.staff.api.StaffService
+import de.velwebsolutions.mildcrowd.staff.api.StatementOfReasons
+import de.velwebsolutions.mildcrowd.staff.api.SuspensionList
+import de.velwebsolutions.mildcrowd.staff.api.SystemStatus
+import de.velwebsolutions.mildcrowd.staff.api.TypeBody
+import javax.inject.Inject
+
+/** Moderation (cases, complaints, roles, locks) and administration (statistics, ideas, payments, breaches, system). */
+interface StaffRepository {
+    suspend fun overview(): ModerationOverview
+
+    suspend fun cases(filter: QueueFilter, page: Int = 1): Page<CaseSummary>
+
+    suspend fun moderationCase(id: Int): ModerationCaseDetail
+
+    suspend fun assign(caseId: Int, staffId: Int): Confirmed<ModerationCaseDetail>
+
+    suspend fun decide(caseId: Int, statement: StatementOfReasons): Confirmed<ModerationCaseDetail>
+
+    suspend fun escalate(caseId: Int, type: String): Confirmed<ModerationCaseDetail>
+
+    suspend fun recordAuthorityReport(caseId: Int, reference: String): Confirmed<ModerationCaseDetail>
+
+    suspend fun extendEvidence(caseId: Int): Confirmed<ModerationCaseDetail>
+
+    suspend fun deleteEvidence(caseId: Int): Confirmed<ModerationCaseDetail>
+
+    suspend fun liftQuarantine(caseId: Int): Confirmed<ModerationCaseDetail>
+
+    /** The evidence ZIP for the police (admins only); the bytes as the web download serves them. */
+    suspend fun evidenceArchive(caseId: Int): ByteArray
+
+    /** A file of a reported chat message (the `url` of the case's report), as the server opened it. */
+    suspend fun reportedAttachment(url: String): ByteArray
+
+    suspend fun complaint(id: Int): ComplaintDetail
+
+    suspend fun review(complaintId: Int, result: String, explanation: String, replacement: StatementOfReasons): Confirmed<ComplaintDetail>
+
+    suspend fun roles(page: Int): RolePage
+
+    suspend fun changeRole(userId: Int, role: String): Confirmed<RoleUser>
+
+    /** Operator account only: marks the account's address as confirmed. */
+    suspend fun confirmEmail(userId: Int): Confirmed<RoleUser>
+
+    /** Operator account only: sends the account the link to choose a new password. */
+    suspend fun sendPasswordLink(userId: Int): Confirmed<RoleUser>
+
+    /** Operator account only: sets a new password; the account is signed out everywhere and told by mail. */
+    suspend fun setPassword(userId: Int, password: String): Confirmed<RoleUser>
+
+    suspend fun suspensions(): SuspensionList
+
+    /** Returns the server's confirmation. */
+    suspend fun release(suspensionId: Int): String
+
+    /** Statistics for [days] (7, 30, 90, 365) and the revenue [month] ("YYYY-MM", "" for the current one). */
+    suspend fun dashboard(days: Int, month: String): AdminDashboard
+
+    /** A page of members' ideas in [sort] order (popular|new). */
+    suspend fun ideas(sort: String, page: Int): Page<AdminIdea>
+
+    /** „Stand speichern“: the author gets a hint. */
+    suspend fun setIdeaStatus(id: Int, input: IdeaStatusInput): Confirmed<AdminIdea>
+
+    suspend fun payments(search: String, status: String, page: Int): PaymentPage
+
+    suspend fun checkPayment(recordId: Int): MollieLookup
+
+    suspend fun checkCustomer(recordId: Int): MollieLookup
+
+    suspend fun searchMollie(term: String): MollieLookup
+
+    suspend fun syncPayment(recordId: Int): Confirmed<PaymentRecord>
+
+    suspend fun refund(recordId: Int, amount: String, reason: String): Confirmed<PaymentRecord>
+
+    suspend fun breaches(): BreachRegister
+
+    suspend fun recordBreach(breach: NewBreach): Confirmed<DataBreach>
+
+    suspend fun recordBreachReport(id: Int, reference: String): Confirmed<DataBreach>
+
+    suspend fun recordPeopleNotified(id: Int): Confirmed<DataBreach>
+
+    suspend fun addBreachNote(id: Int, note: String): Confirmed<DataBreach>
+
+    suspend fun closeBreach(id: Int): Confirmed<DataBreach>
+
+    suspend fun system(): SystemStatus
+}
+
+class DefaultStaffRepository @Inject constructor(private val client: ApiClient) : StaffRepository {
+    private val service = client.create<StaffService>()
+
+    override suspend fun overview() = service.overview().data
+
+    override suspend fun cases(filter: QueueFilter, page: Int) = service.cases(
+        status = filter.status,
+        priority = filter.priority,
+        mine = if (filter.mine) "1" else null,
+        search = filter.search.takeIf { it.isNotBlank() },
+        page = page
+    )
+
+    override suspend fun moderationCase(id: Int) = service.moderationCase(id).data
+
+    override suspend fun assign(caseId: Int, staffId: Int) = service.assign(caseId, AssignBody(staffId))
+
+    override suspend fun decide(caseId: Int, statement: StatementOfReasons) = service.decide(caseId, statement)
+
+    override suspend fun escalate(caseId: Int, type: String) = service.escalate(caseId, TypeBody(type))
+
+    override suspend fun recordAuthorityReport(caseId: Int, reference: String) =
+        service.recordAuthorityReport(caseId, ReferenceBody(reference))
+
+    override suspend fun extendEvidence(caseId: Int) = service.extendEvidence(caseId)
+
+    override suspend fun deleteEvidence(caseId: Int) = service.deleteEvidence(caseId)
+
+    override suspend fun liftQuarantine(caseId: Int) = service.liftQuarantine(caseId)
+
+    override suspend fun evidenceArchive(caseId: Int) = client.download(client.url("staff/moderation/cases/$caseId/evidence").toString())
+
+    override suspend fun reportedAttachment(url: String) = client.download(url)
+
+    override suspend fun complaint(id: Int) = service.complaint(id).data
+
+    override suspend fun review(complaintId: Int, result: String, explanation: String, replacement: StatementOfReasons) =
+        service.review(complaintId, ComplaintReview.of(result, explanation, replacement))
+
+    override suspend fun roles(page: Int) = service.roles(page)
+
+    override suspend fun changeRole(userId: Int, role: String) = service.changeRole(userId, RoleBody(role))
+
+    override suspend fun confirmEmail(userId: Int) = service.confirmEmail(userId)
+
+    override suspend fun sendPasswordLink(userId: Int) = service.sendPasswordLink(userId)
+
+    override suspend fun setPassword(userId: Int, password: String) = service.setPassword(userId, PasswordBody(password))
+
+    override suspend fun suspensions() = service.suspensions().data
+
+    override suspend fun release(suspensionId: Int) = service.release(suspensionId).message
+
+    override suspend fun dashboard(days: Int, month: String) = service.dashboard(days, month.ifEmpty { null }).data
+
+    override suspend fun ideas(sort: String, page: Int) = service.ideas(sort, page)
+
+    override suspend fun setIdeaStatus(id: Int, input: IdeaStatusInput) = service.setIdeaStatus(id, input)
+
+    override suspend fun payments(search: String, status: String, page: Int) =
+        service.payments(search.ifEmpty { null }, status.ifEmpty { null }, page)
+
+    override suspend fun checkPayment(recordId: Int) = service.checkPayment(recordId).data
+
+    override suspend fun checkCustomer(recordId: Int) = service.checkCustomer(recordId).data
+
+    override suspend fun searchMollie(term: String) = service.searchMollie(SearchBody(term)).data
+
+    override suspend fun syncPayment(recordId: Int) = service.syncPayment(recordId)
+
+    override suspend fun refund(recordId: Int, amount: String, reason: String) = service.refund(recordId, RefundBody(amount, reason))
+
+    override suspend fun breaches() = service.breaches()
+
+    override suspend fun recordBreach(breach: NewBreach) = service.recordBreach(breach)
+
+    override suspend fun recordBreachReport(id: Int, reference: String) = service.recordBreachReport(id, ReferenceBody(reference))
+
+    override suspend fun recordPeopleNotified(id: Int) = service.recordPeopleNotified(id)
+
+    override suspend fun addBreachNote(id: Int, note: String) = service.addBreachNote(id, NoteBody(note))
+
+    override suspend fun closeBreach(id: Int) = service.closeBreach(id)
+
+    override suspend fun system() = service.system().data
+}

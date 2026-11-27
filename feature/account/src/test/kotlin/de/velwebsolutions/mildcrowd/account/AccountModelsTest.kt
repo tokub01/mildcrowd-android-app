@@ -1,0 +1,171 @@
+package de.velwebsolutions.mildcrowd.account
+
+import de.velwebsolutions.mildcrowd.account.api.AccountSettings
+import de.velwebsolutions.mildcrowd.account.api.ComplaintDecision
+import de.velwebsolutions.mildcrowd.account.api.CrowdJoined
+import de.velwebsolutions.mildcrowd.account.api.DeviceOverview
+import de.velwebsolutions.mildcrowd.account.api.GlossaryTerm
+import de.velwebsolutions.mildcrowd.account.api.HiddenWords
+import de.velwebsolutions.mildcrowd.account.api.PhoneNumberStatus
+import de.velwebsolutions.mildcrowd.account.api.PrivacyCentre
+import de.velwebsolutions.mildcrowd.account.api.PrivacyChoice
+import de.velwebsolutions.mildcrowd.account.api.PrivacyCounts
+import de.velwebsolutions.mildcrowd.account.api.PrivacySection
+import de.velwebsolutions.mildcrowd.account.api.PrivacySettingItem
+import de.velwebsolutions.mildcrowd.account.api.PrivacyValue
+import de.velwebsolutions.mildcrowd.account.api.ProfileChange
+import de.velwebsolutions.mildcrowd.account.api.ReportForm
+import de.velwebsolutions.mildcrowd.account.api.SafetyAccount
+import de.velwebsolutions.mildcrowd.account.api.SafetyLists
+import de.velwebsolutions.mildcrowd.account.api.SettingsChange
+import de.velwebsolutions.mildcrowd.account.api.StarterCrowd
+import de.velwebsolutions.mildcrowd.account.api.StatementSaved
+import de.velwebsolutions.mildcrowd.account.api.Suspension
+import de.velwebsolutions.mildcrowd.account.api.TwoFactorState
+import de.velwebsolutions.mildcrowd.account.api.WelcomeStep
+import de.velwebsolutions.mildcrowd.account.api.WelcomeTour
+import de.velwebsolutions.mildcrowd.account.ui.auth.PastDates
+import de.velwebsolutions.mildcrowd.account.ui.auth.SignedOutStep
+import de.velwebsolutions.mildcrowd.core.auth.LoginCodeChannel
+import de.velwebsolutions.mildcrowd.core.model.Me
+import de.velwebsolutions.mildcrowd.core.network.MildcrowdJson
+import java.time.Instant
+import kotlinx.serialization.KSerializer
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/** The account models read back what they write, with and without defaults, and the small helpers around them. */
+class AccountModelsTest {
+    private val withDefaults = kotlinx.serialization.json.Json(MildcrowdJson.snake) { encodeDefaults = true }
+    private val at: Instant = Instant.parse("2026-10-22T10:00:00Z")
+
+    private fun <T> roundTrip(serializer: KSerializer<T>, vararg values: T) = values.forEach { value ->
+        listOf(MildcrowdJson.snake, withDefaults).forEach { json ->
+            assertEquals(value, json.decodeFromString(serializer, json.encodeToString(serializer, value)))
+        }
+    }
+
+    @Test
+    fun settingsLockAndComplaints() {
+        roundTrip(
+            AccountSettings.serializer(),
+            AccountSettings("Mira", "mira", "m@x.tld"),
+            AccountSettings("Mira", "mira", "m@x.tld", false, TwoFactorState(TwoFactorState.Phase.Pending, "KEY", "otpauth://x"), true)
+        )
+        val me = Me(5, "mira", "Mira", "MS", "m@x.tld")
+        roundTrip(SettingsChange.serializer(), SettingsChange("ok", AccountSettings("M", "m", "e"), listOf("a-b")))
+        roundTrip(ProfileChange.serializer(), ProfileChange(data = me), ProfileChange("ok", me))
+        roundTrip(
+            Suspension.serializer(),
+            Suspension("ban", "Gesperrt", at, accusation = "Beleidigung"),
+            Suspension("suspension", "Sperre", at, at, "29.10.2026, 11:00 Uhr", "x", "y", "z", at, 1, 2, 3, 4)
+        )
+        roundTrip(StatementSaved.serializer(), StatementSaved("ok", at))
+        roundTrip(
+            ComplaintDecision.serializer(),
+            ComplaintDecision(7, "Entfernt", "Spam", deadline = at),
+            ComplaintDecision(7, "a", "b", "c", "d", at)
+        )
+        assertEquals(7, ComplaintDecision(7, "a", "b", deadline = at).id)
+        assertTrue(Suspension("ban", "Gesperrt", at, accusation = "x").isBan)
+        assertFalse(Suspension("suspension", "Sperre", at, accusation = "x").isBan)
+    }
+
+    @Test
+    fun privacyDevicesAndSafety() {
+        val switch = PrivacySettingItem("k", "T", kind = "switch", value = PrivacyValue.Flag(true))
+        roundTrip(
+            PrivacyCentre.serializer(),
+            PrivacyCentre(emptyList()),
+            PrivacyCentre(
+                listOf(
+                    PrivacySection(
+                        "s",
+                        "S",
+                        true,
+                        listOf(
+                            switch,
+                            PrivacySettingItem("c", "C", "h", "choice", PrivacyValue.Choice("a"), listOf(PrivacyChoice("a", "A")))
+                        )
+                    )
+                ),
+                PrivacyCounts(1, 2, 3, 4, 5)
+            )
+        )
+        roundTrip(HiddenWords.serializer(), HiddenWords(listOf("x"), 50))
+        roundTrip(
+            DeviceOverview.serializer(),
+            DeviceOverview(DeviceOverview.Current(device = "App", ip = "1")),
+            DeviceOverview(
+                DeviceOverview.Current("Pixel", "App", "1"),
+                listOf(DeviceOverview.AppSignIn(1, "A"), DeviceOverview.AppSignIn(2, "B", at, at)),
+                true,
+                listOf(DeviceOverview.BrowserSession("k", "Chrome", "1", at)),
+                listOf(DeviceOverview.KnownDevice(1, "Chrome", at)),
+                true,
+                listOf(DeviceOverview.ChatDevice(1, "Pixel", at)),
+                true
+            )
+        )
+        roundTrip(
+            SafetyLists.serializer(),
+            SafetyLists(),
+            SafetyLists(listOf(SafetyAccount(1, "a", "A", "A")), listOf(SafetyAccount(2, "b", "B", "B", "sun", "http://x")), emptyList())
+        )
+        roundTrip(ReportForm.serializer(), ReportForm("u", emptyList()), ReportForm("u", listOf(PrivacyChoice("spam", "Spam")), 48))
+    }
+
+    @Test
+    fun welcomeAndGlossary() {
+        roundTrip(
+            WelcomeTour.serializer(),
+            WelcomeTour(listOf(WelcomeStep("profil", "Über dich"))),
+            WelcomeTour(
+                listOf(
+                    WelcomeStep("crowds", "Crowds")
+                ),
+                true, "Bio", "Ort", "spring", listOf(PrivacyChoice("sun", "Blau")), "everyone", "public",
+                listOf(PrivacyChoice("everyone", "Alle")), listOf(PrivacyChoice("public", "Öffentlich")),
+                listOf(StarterCrowd(1, "g", "Garten"), StarterCrowd(2, "l", "Lesen", "d", "sun", 3, "http://b", true))
+            )
+        )
+        roundTrip(CrowdJoined.serializer(), CrowdJoined(true))
+        val term = GlossaryTerm("Posts", "posts", "Ein Beitrag")
+        roundTrip(GlossaryTerm.serializer(), term)
+        assertEquals("posts", term.slug)
+    }
+
+    @Test
+    fun signedOutStepsAreKeptByTheirCode() {
+        val steps =
+            listOf(
+                SignedOutStep.Register,
+                SignedOutStep.ForgotPassword,
+                SignedOutStep.TwoFactorRecovery,
+                SignedOutStep.TwoFactor("c-1"),
+                SignedOutStep.LoginCode(LoginCodeChannel.Sms, "mira:sol"),
+                SignedOutStep.LoginCode(LoginCodeChannel.Email, "")
+            )
+        assertEquals(steps, steps.map { SignedOutStep.decode(it.code) })
+        assertNull(SignedOutStep.decode("unbekannt"))
+        assertNull("a channel of a newer app is dropped", SignedOutStep.decode("login-code:brieftaube:mira"))
+    }
+
+    @Test
+    fun aBirthDateLiesAtLeastEighteenYearsBack() {
+        val dates = PastDates(latest = 1_000)
+        assertTrue(dates.isSelectableDate(1_000))
+        assertFalse(dates.isSelectableDate(1_001))
+    }
+
+    @Test
+    fun theMobileNumberBlockIsLeftOutOnlyWithoutSmsAndWithoutANumber() {
+        assertFalse(PhoneNumberStatus().isShown)
+        assertTrue(PhoneNumberStatus(smsAvailable = true).isShown)
+        assertTrue("a saved number can still be deleted", PhoneNumberStatus(phoneNumber = "+49 176 ••• 78").isShown)
+        assertTrue(PhoneNumberStatus(pending = "+49 176 ••• 78").isShown)
+    }
+}

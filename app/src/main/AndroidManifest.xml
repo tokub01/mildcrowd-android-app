@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:name=".OasisApplication"
+        android:name=".MildcrowdApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
@@ -16,7 +16,7 @@
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="33"
-        android:theme="@style/Theme.Oasis">
+        android:theme="@style/Theme.Mildcrowd">
 
         <activity
             android:name=".MainActivity"
@@ -27,18 +27,18 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- oasis://mitgliedschaft?checkout=… after a payment, like the iOS URL scheme. -->
+            <!-- mildcrowd://mitgliedschaft?checkout=… after a payment, like the iOS URL scheme. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="oasis" />
+                <data android:scheme="mildcrowd" />
             </intent-filter>
             <!--
                 Links from mails and shared posts open the app instead of the browser (verified App Links: the host's
                 /.well-known/assetlinks.json grants handle_all_urls). The paths are app/Support/Security/AppLinks.php's
                 OPENED_IN_APP; its EXCLUDED paths go on to the browser (DeepLink.incoming). The host follows the build
-                type: get-oasis.com for release, staging.get-oasis.com for the others.
+                type: mildcrowd.com for release, staging.mildcrowd.com for the others.
             -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
@@ -46,10 +46,12 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
                 <data android:host="${appLinkHost}" />
+                <data android:pathPrefix="/posts/" />
                 <data android:pathPrefix="/tropfen/" />
                 <data android:pathPrefix="/profil/" />
-                <data android:pathPrefix="/oasen/" />
+                <data android:pathPrefix="/crowds/" />
                 <data android:pathPrefix="/einladung/" />
+                <data android:pathPrefix="/gemeinsam/" />
                 <data android:pathPrefix="/email/bestaetigen/" />
                 <data android:pathPrefix="/passwort-zuruecksetzen/" />
                 <data android:pathPrefix="/anmelden/code" />
@@ -59,7 +61,7 @@
         </activity>
 
         <!--
-            Oasis as a share target: images (screenshots too), videos, audio and any other file, one or several. The
+            Mildcrowd as a share target: images (screenshots too), videos, audio and any other file, one or several. The
             activity copies them into the cache and opens "Teilen mit …" in MainActivity; it has no window of its own.
         -->
         <activity

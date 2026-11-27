@@ -1,0 +1,310 @@
+package de.velwebsolutions.mildcrowd.account.ui.components
+
+import android.content.ContentResolver
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.RadioButtonChecked
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
+import de.velwebsolutions.mildcrowd.account.catching
+import de.velwebsolutions.mildcrowd.core.format.GermanTime
+import de.velwebsolutions.mildcrowd.core.network.asApiError
+import de.velwebsolutions.mildcrowd.design.components.AsyncMildcrowdButton
+import de.velwebsolutions.mildcrowd.design.components.LocalApiClient
+import de.velwebsolutions.mildcrowd.design.components.MildcrowdButton
+import de.velwebsolutions.mildcrowd.design.components.MildcrowdButtonKind
+import de.velwebsolutions.mildcrowd.design.components.MildcrowdLogo
+import de.velwebsolutions.mildcrowd.design.components.MildcrowdTextButton
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdColors
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdRadius
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdType
+import java.io.IOException
+import java.time.Instant
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/** The long German date formats of the account pages (the short ones are `GermanTime.day` and `.dayAndTime`). */
+object GermanDate {
+    /** „22. Oktober 2026, 14:05 Uhr“. */
+    fun long(instant: Instant): String = GermanTime.format(instant, "d. MMMM yyyy, HH:mm") + " Uhr"
+
+    /** „22. Oktober 2026“. */
+    fun dayLong(instant: Instant): String = GermanTime.format(instant, "d. MMMM yyyy")
+}
+
+/** A page of the website (`/agb`, `/hilfe` …) on the server the app talks to. */
+@Composable
+fun webUrl(path: String): String = LocalApiClient.current?.absoluteUrl("/$path")?.toString() ?: "https://mildcrowd.com/$path"
+
+/** The scrolling page of an account screen: 20 padding, at most 720 wide. */
+@Composable
+fun AccountPage(maxWidth: Int = 720, spacing: Int = 20, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Column(
+            Modifier.widthIn(max = maxWidth.dp).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(spacing.dp),
+            content = content
+        )
+    }
+}
+
+/** A card like `x-mildcrowd.auth-card`: logo, title and subtitle above the form. */
+@Composable
+fun AuthCard(title: String, subtitle: String, content: @Composable ColumnScope.() -> Unit) {
+    val shape = RoundedCornerShape(MildcrowdRadius.L.dp)
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Column(
+            Modifier
+                .widthIn(max = 560.dp)
+                .fillMaxWidth()
+                .background(MildcrowdColors.Paper, shape)
+                .border(1.dp, MildcrowdColors.PaperLine, shape)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            MildcrowdLogo(Modifier.padding(top = 12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(title, style = MildcrowdType.display(34), color = MildcrowdColors.Night, modifier = Modifier.semantics { heading() })
+                Text(subtitle, style = MildcrowdType.Body, color = MildcrowdColors.Ink2)
+            }
+            content()
+        }
+    }
+}
+
+/** An underlined link in Nachtwasser (NavigationLink texts on iOS), at least 44 high. */
+@Composable
+fun LinkText(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, bold: Boolean = true) {
+    Box(
+        modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(
+            text,
+            style = (if (bold) MildcrowdType.SmallBold else MildcrowdType.Small).copy(textDecoration = TextDecoration.Underline),
+            color = MildcrowdColors.Night
+        )
+    }
+}
+
+/**
+ * Radio choices as pills, one per line (the web's labelled radios): privacy audiences, report categories and the
+ * welcome tour's choices.
+ */
+@Composable
+fun <T> FlowChoices(options: List<Pair<T, String>>, selected: T?, tag: String, enabled: Boolean = true, choose: (T) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { (id, label) ->
+            val isSelected = id == selected
+            val shape = RoundedCornerShape(MildcrowdRadius.TILE.dp)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 44.dp)
+                    .background(if (isSelected) MildcrowdColors.Night else MildcrowdColors.Field, shape)
+                    .border(1.dp, if (isSelected) MildcrowdColors.Night else MildcrowdColors.DuneLine, shape)
+                    .clickable(enabled = enabled, role = Role.RadioButton) { choose(id) }
+                    .semantics { this.selected = isSelected }
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .testTag("$tag.$id"),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    if (isSelected) Icons.Outlined.RadioButtonChecked else Icons.Outlined.RadioButtonUnchecked,
+                    contentDescription = null,
+                    tint = if (isSelected) MildcrowdColors.Sun else MildcrowdColors.FieldLine
+                )
+                Text(
+                    label,
+                    style = MildcrowdType.Small,
+                    color = if (isSelected) MildcrowdColors.OnNight else MildcrowdColors.Ink,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+/** The choices of a privacy setting, a report category or a step of the welcome tour. */
+@Composable
+fun FlowChoices(
+    choices: List<de.velwebsolutions.mildcrowd.account.api.PrivacyChoice>,
+    selected: String?,
+    tag: String,
+    enabled: Boolean = true,
+    choose: (String) -> Unit
+) = FlowChoices(choices.map { it.value to it.label }, selected, tag, enabled, choose)
+
+/** A row with text on the left and a small action on the right, separated by a line (device and safety lists). */
+@Composable
+fun ListRow(leading: @Composable () -> Unit, trailing: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        HorizontalDivider(color = MildcrowdColors.DuneLine)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { leading() }
+            trailing()
+        }
+    }
+}
+
+/** Muted text for empty lists. */
+@Composable
+fun EmptyLine(text: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        HorizontalDivider(color = MildcrowdColors.DuneLine)
+        Text(text, style = MildcrowdType.Small, color = MildcrowdColors.Muted)
+    }
+}
+
+/** A QR code for the authenticator app (the web shows Fortify's SVG; the content is the same otpauth URL). */
+@Composable
+fun QrCodeView(content: String, modifier: Modifier = Modifier) {
+    val code = remember(content) { QrCode.encode(content) } ?: return
+    Box(
+        modifier
+            .background(Color.White, RoundedCornerShape(MildcrowdRadius.XS.dp))
+            .padding(16.dp)
+            .semantics { contentDescription = "QR-Code für die Authenticator-App" }
+            .testTag("settings.qrCode")
+    ) {
+        Canvas(Modifier.size(192.dp)) {
+            // Two light modules of quiet zone inside the white card.
+            val cell = size.minDimension / (code.size + 4)
+            for (y in 0 until code.size) {
+                for (x in 0 until code.size) {
+                    if (code[x, y]) drawRect(Color.Black, Offset((x + 2) * cell, (y + 2) * cell), Size(cell + 0.5f, cell + 0.5f))
+                }
+            }
+        }
+    }
+}
+
+/** „Sind Sie sicher?“ as a dialog: the question, the destructive action and „Abbrechen“. */
+@Composable
+fun ConfirmDialog(question: String, confirm: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        text = { Text(question, style = MildcrowdType.Body, color = MildcrowdColors.Ink) },
+        confirmButton = {
+            MildcrowdTextButton(confirm, {
+                onDismiss()
+                onConfirm()
+            }, color = MildcrowdColors.Danger)
+        },
+        dismissButton = { MildcrowdTextButton("Abbrechen", onDismiss) },
+        containerColor = MildcrowdColors.Paper
+    )
+}
+
+/** Writes [bytes] to the file the member picked; false when the storage refuses it. */
+internal fun writeFile(resolver: ContentResolver, uri: Uri, bytes: ByteArray): Boolean {
+    val stream = runCatching { resolver.openOutputStream(uri) }.getOrNull() ?: return false
+    return try {
+        stream.write(bytes)
+        true
+    } catch (_: IOException) {
+        false
+    } finally {
+        stream.close()
+    }
+}
+
+/**
+ * „Daten herunterladen“ (the web's direct download of `mildcrowd-daten.zip`): fetches the ZIP, then lets the member save it
+ * where they like (the system's file picker). Used in Einstellungen and on the lock screen. The ZIP can be large
+ * (Posts with their images), so it is written off the main thread.
+ */
+@Composable
+fun DataExportButton(download: suspend () -> ByteArray, failed: (String) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var file by remember { mutableStateOf<ByteArray?>(null) }
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        // Nothing to save when the picker was cancelled, or when it answers a recreated screen that lost the file.
+        val bytes = file
+        if (uri == null || bytes == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val saved = withContext(Dispatchers.IO) { writeFile(context.contentResolver, uri, bytes) }
+            if (!saved) failed("Die Datei konnte nicht gespeichert werden.")
+        }
+    }
+    if (file != null) {
+        MildcrowdButton("ZIP-Datei sichern", {
+            save.launch("mildcrowd-daten.zip")
+        }, fullWidth = false, modifier = Modifier.testTag("settings.exportShare"))
+    } else {
+        AsyncMildcrowdButton(
+            "Daten herunterladen",
+            {
+                catching { download() }
+                    .onSuccess { file = it }
+                    .onFailure { error -> failed(error.asApiError().userMessage) }
+            },
+            kind = MildcrowdButtonKind.Secondary,
+            fullWidth = false,
+            modifier = Modifier.testTag("settings.export")
+        )
+    }
+}
+
+/** A small heading inside a page (`Font.Mildcrowd.heading(19)`). */
+@Composable
+fun SubHeading(text: String, size: Int = 19) {
+    Text(text, style = MildcrowdType.heading(size), color = MildcrowdColors.Night, modifier = Modifier.semantics { heading() })
+}

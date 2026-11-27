@@ -5,15 +5,17 @@ import java.time.format.DateTimeFormatter
 import java.util.Properties
 
 plugins {
-    alias(libs.plugins.oasis.android.application)
+    alias(libs.plugins.mildcrowd.android.application)
     alias(libs.plugins.roborazzi)
     alias(libs.plugins.play.publisher)
 }
 
-// Push through Firebase Cloud Messaging (project oasis-86acd) when app/google-services.json is there – locally copied,
+// Push through Firebase Cloud Messaging (project mildcrowd) when app/google-services.json is there – locally copied,
 // in CI written from the GOOGLE_SERVICES_JSON_B64 secret, never committed. Without it the app builds without push.
-// The file names only de.velwebsolutions.oasis, so the ".staging" variant goes without Firebase.
-if (file("google-services.json").exists()) {
+// The file names only de.velwebsolutions.mildcrowd, so the ".staging" variant goes without Firebase. A file that still
+// names another package (the one from before the rename) is skipped as well: the plugin would fail the build on it.
+val googleServices = file("google-services.json")
+if (googleServices.exists() && googleServices.readText().contains("\"de.velwebsolutions.mildcrowd\"")) {
     apply(plugin = "com.google.gms.google-services")
     tasks.matching { it.name.startsWith("process") && it.name.contains("Staging") && it.name.endsWith("GoogleServices") }
         .configureEach { enabled = false }
@@ -27,10 +29,10 @@ val secrets = Properties().apply {
 
 fun secret(name: String): String = System.getenv(name) ?: secrets.getProperty(name, "")
 
-// The upload key for Google Play: ~/.android-keys/oasis-upload.jks with its passwords in
-// ~/.android-keys/oasis-upload.properties (both outside the repository), or the ANDROID_UPLOAD_* variables in CI.
+// The upload key for Google Play: ~/.android-keys/mildcrowd-upload.jks with its passwords in
+// ~/.android-keys/mildcrowd-upload.properties (both outside the repository), or the ANDROID_UPLOAD_* variables in CI.
 val uploadKey = Properties().apply {
-    val file = File(System.getProperty("user.home"), ".android-keys/oasis-upload.properties")
+    val file = File(System.getProperty("user.home"), ".android-keys/mildcrowd-upload.properties")
     if (file.exists()) file.inputStream().use(::load)
 }
 
@@ -48,24 +50,24 @@ val commitVersionCode: Int = System.getenv("VERSION_CODE")?.toInt() ?: run {
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.app"
+    namespace = "de.velwebsolutions.mildcrowd.app"
 
     defaultConfig {
-        applicationId = "de.velwebsolutions.oasis"
+        applicationId = "de.velwebsolutions.mildcrowd"
         versionCode = commitVersionCode
-        versionName = "1.0"
-        buildConfigField("String", "OASIS_GATE_KEY", "\"\"")
+        versionName = "0.28.0"
+        buildConfigField("String", "MILDCROWD_GATE_KEY", "\"\"")
         buildConfigField("String", "REVERB_HOST_OVERRIDE", "\"\"")
         // The host whose links open the app (App Links, see AndroidManifest.xml).
-        manifestPlaceholders["appLinkHost"] = "get-oasis.com"
+        manifestPlaceholders["appLinkHost"] = "mildcrowd.com"
     }
 
     signingConfigs {
         create("upload") {
-            val store = upload("KEYSTORE_PATH").ifEmpty { "${System.getProperty("user.home")}/.android-keys/oasis-upload.jks" }
+            val store = upload("KEYSTORE_PATH").ifEmpty { "${System.getProperty("user.home")}/.android-keys/mildcrowd-upload.jks" }
             storeFile = file(store)
             storePassword = upload("KEYSTORE_PASSWORD")
-            keyAlias = upload("KEY_ALIAS").ifEmpty { "oasis-upload" }
+            keyAlias = upload("KEY_ALIAS").ifEmpty { "mildcrowd-upload" }
             keyPassword = upload("KEY_PASSWORD")
         }
     }
@@ -73,37 +75,37 @@ android {
     buildTypes {
         debug {
             // The local Sail backend on the Mac; the emulator reaches the Mac's localhost as 10.0.2.2.
-            buildConfigField("String", "OASIS_BASE_URL", "\"${secret("OASIS_DEBUG_BASE_URL").ifEmpty { "http://10.0.2.2" }}\"")
-            buildConfigField("String", "REVERB_HOST_OVERRIDE", "\"${secret("OASIS_DEBUG_REVERB_HOST").ifEmpty { "10.0.2.2" }}\"")
-            manifestPlaceholders["appLinkHost"] = "staging.get-oasis.com"
+            buildConfigField("String", "MILDCROWD_BASE_URL", "\"${secret("MILDCROWD_DEBUG_BASE_URL").ifEmpty { "http://10.0.2.2" }}\"")
+            buildConfigField("String", "REVERB_HOST_OVERRIDE", "\"${secret("MILDCROWD_DEBUG_REVERB_HOST").ifEmpty { "10.0.2.2" }}\"")
+            manifestPlaceholders["appLinkHost"] = "staging.mildcrowd.com"
         }
         // Before staging and play: initWith copies release as it is at that moment, so both are only minified and shrunk
         // with R8 (and use proguard-rules.pro) when release is configured first.
         release {
-            buildConfigField("String", "OASIS_BASE_URL", "\"https://get-oasis.com\"")
-            manifestPlaceholders["appLinkHost"] = "get-oasis.com"
+            buildConfigField("String", "MILDCROWD_BASE_URL", "\"https://mildcrowd.com\"")
+            manifestPlaceholders["appLinkHost"] = "mildcrowd.com"
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         create("staging") {
-            // staging.get-oasis.com (deployed from Laravel's develop branch) behind the staging gate (`X-Oasis-Gate`).
+            // staging.mildcrowd.com (deployed from Laravel's develop branch) behind the staging gate (`X-Mildcrowd-Gate`).
             initWith(getByName("release"))
             applicationIdSuffix = ".staging"
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
-            buildConfigField("String", "OASIS_BASE_URL", "\"https://staging.get-oasis.com\"")
-            buildConfigField("String", "OASIS_GATE_KEY", "\"${secret("OASIS_GATE_KEY")}\"")
-            manifestPlaceholders["appLinkHost"] = "staging.get-oasis.com"
+            buildConfigField("String", "MILDCROWD_BASE_URL", "\"https://staging.mildcrowd.com\"")
+            buildConfigField("String", "MILDCROWD_GATE_KEY", "\"${secret("MILDCROWD_GATE_KEY")}\"")
+            manifestPlaceholders["appLinkHost"] = "staging.mildcrowd.com"
         }
         create("play") {
-            // The Google Play test build: the real package name, but staging.get-oasis.com behind the staging gate –
+            // The Google Play test build: the real package name, but staging.mildcrowd.com behind the staging gate –
             // the same as the TestFlight build of iOS. Signed with the upload key; Google re-signs it for devices.
             initWith(getByName("release"))
             matchingFallbacks += "release"
-            buildConfigField("String", "OASIS_BASE_URL", "\"https://staging.get-oasis.com\"")
-            buildConfigField("String", "OASIS_GATE_KEY", "\"${secret("OASIS_GATE_KEY")}\"")
-            manifestPlaceholders["appLinkHost"] = "staging.get-oasis.com"
+            buildConfigField("String", "MILDCROWD_BASE_URL", "\"https://staging.mildcrowd.com\"")
+            buildConfigField("String", "MILDCROWD_GATE_KEY", "\"${secret("MILDCROWD_GATE_KEY")}\"")
+            manifestPlaceholders["appLinkHost"] = "staging.mildcrowd.com"
             signingConfig = signingConfigs.getByName("upload").takeIf { upload("KEYSTORE_PASSWORD").isNotEmpty() }
         }
     }

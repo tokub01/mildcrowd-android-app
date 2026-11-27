@@ -1,0 +1,377 @@
+{
+  "comment": "Plaintexts of chat messages with the optional send effect, reply and reaction (docs/mildcrowd-chat-client.md, \"Backgrounds and effects\", \"Reactions and replies\", \"Pinned message and polls\"). Every client must build exactly the `plaintext` of `build`, `reactions.build`, `replies.build`, `pins.build` and `polls.build` (field order included) and read the `parse` cases as given; anything not well-formed is ignored and the message still shows. Checked by tests/js/chat/attachments.test.mjs.",
+  "effects": [
+    "konfetti",
+    "herzen",
+    "ballons",
+    "feuerwerk"
+  ],
+  "build": [
+    {
+      "text": "Hallo",
+      "attachments": [],
+      "effect": null,
+      "plaintext": "Hallo"
+    },
+    {
+      "text": "Alles Gute! 🎉",
+      "attachments": [],
+      "effect": "konfetti",
+      "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Alles Gute! 🎉\",\"attachments\":[],\"effect\":\"konfetti\"}"
+    },
+    {
+      "text": "",
+      "attachments": [
+        {
+          "id": "17",
+          "kind": "image",
+          "mime": "image/jpeg",
+          "size": 1200,
+          "key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "nonce": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        }
+      ],
+      "effect": "herzen",
+      "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[{\"id\":\"17\",\"kind\":\"image\",\"mime\":\"image/jpeg\",\"size\":1200,\"key\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"nonce\":\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\"}],\"effect\":\"herzen\"}"
+    }
+  ],
+  "parse": [
+    {
+      "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Hoch die Tassen\",\"attachments\":[],\"effect\":\"feuerwerk\"}",
+      "text": "Hoch die Tassen",
+      "attachments": 0,
+      "effect": "feuerwerk"
+    },
+    {
+      "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Steig auf\",\"attachments\":[],\"effect\":\"ballons\"}",
+      "text": "Steig auf",
+      "attachments": 0,
+      "effect": "ballons"
+    },
+    {
+      "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Unbekannt\",\"attachments\":[],\"effect\":\"regen\"}",
+      "text": "Unbekannt",
+      "attachments": 0,
+      "effect": null
+    },
+    {
+      "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Groß\",\"attachments\":[],\"effect\":\"KONFETTI\"}",
+      "text": "Groß",
+      "attachments": 0,
+      "effect": null
+    },
+    {
+      "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Kein Text\",\"attachments\":[],\"effect\":[\"konfetti\"]}",
+      "text": "Kein Text",
+      "attachments": 0,
+      "effect": null
+    },
+    {
+      "plaintext": "{\"effect\":\"konfetti\",\"text\":\"Nur so\"}",
+      "text": "{\"effect\":\"konfetti\",\"text\":\"Nur so\"}",
+      "attachments": 0,
+      "effect": null
+    },
+    {
+      "plaintext": "Konfetti!",
+      "text": "Konfetti!",
+      "attachments": 0,
+      "effect": null
+    }
+  ],
+  "reactions": {
+    "set": [
+      "👍",
+      "❤️",
+      "😂",
+      "😮",
+      "😢",
+      "🙏"
+    ],
+    "build": [
+      {
+        "to": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "emoji": "👍",
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"reaction\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"emoji\":\"👍\"}}"
+      },
+      {
+        "to": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "emoji": "❤️",
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"reaction\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"emoji\":\"❤️\"}}"
+      },
+      {
+        "to": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "emoji": "",
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"reaction\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"emoji\":\"\"}}"
+      }
+    ],
+    "parse": [
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"reaction\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"emoji\":\"🙏\"}}",
+        "reaction": {
+          "to": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "emoji": "🙏"
+        }
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"reaction\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"emoji\":\"🔥\"}}",
+        "reaction": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"reaction\":{\"to\":\"kurz\",\"emoji\":\"👍\"}}",
+        "reaction": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"reaction\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"emoji\":\"❤\"}}",
+        "reaction": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"reaction\":\"👍\"}",
+        "reaction": null
+      }
+    ]
+  },
+  "replies": {
+    "build": [
+      {
+        "text": "Ja, gern!",
+        "effect": null,
+        "reply": {
+          "to": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "sender": "12",
+          "kind": "text",
+          "excerpt": "Wollen wir morgen wandern?",
+          "expires_at": "2026-11-10T12:00:00Z"
+        },
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Ja, gern!\",\"attachments\":[],\"reply\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"sender\":\"12\",\"kind\":\"text\",\"excerpt\":\"Wollen wir morgen wandern?\",\"expires_at\":\"2026-11-10T12:00:00Z\"}}"
+      },
+      {
+        "text": "Danke 🎉",
+        "effect": "konfetti",
+        "reply": {
+          "to": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "sender": "11",
+          "kind": "once",
+          "excerpt": "",
+          "expires_at": "2026-11-10T12:00:00Z"
+        },
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Danke 🎉\",\"attachments\":[],\"effect\":\"konfetti\",\"reply\":{\"to\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"sender\":\"11\",\"kind\":\"once\",\"excerpt\":\"\",\"expires_at\":\"2026-11-10T12:00:00Z\"}}"
+      }
+    ],
+    "excerpt": [
+      {
+        "text": "  Erste Zeile\n\n zweite   Zeile  ",
+        "attachments": [],
+        "view_once": false,
+        "kind": "text",
+        "excerpt": "Erste Zeile zweite Zeile"
+      },
+      {
+        "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx🌴",
+        "attachments": [],
+        "view_once": false,
+        "kind": "text",
+        "excerpt": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…"
+      },
+      {
+        "text": "🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴",
+        "attachments": [],
+        "view_once": false,
+        "kind": "text",
+        "excerpt": "🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴🌴"
+      },
+      {
+        "text": "",
+        "attachments": [
+          {
+            "kind": "audio"
+          }
+        ],
+        "view_once": false,
+        "kind": "audio",
+        "excerpt": ""
+      },
+      {
+        "text": "Schau mal",
+        "attachments": [
+          {
+            "kind": "image"
+          }
+        ],
+        "view_once": true,
+        "kind": "once",
+        "excerpt": ""
+      }
+    ],
+    "parse": [
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Ja\",\"attachments\":[],\"reply\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"sender\":\"12\",\"kind\":\"text\",\"excerpt\":\"Wollen wir morgen wandern?\",\"expires_at\":\"2026-11-10T12:00:00Z\"}}",
+        "reply": {
+          "to": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "sender": "12",
+          "kind": "text",
+          "excerpt": "Wollen wir morgen wandern?",
+          "expires_at": "2026-11-10T12:00:00Z"
+        }
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Ja\",\"attachments\":[],\"reply\":{\"to\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"sender\":\"11\",\"kind\":\"once\",\"excerpt\":\"Geheim\",\"expires_at\":\"2026-11-10T12:00:00Z\"}}",
+        "reply": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Ja\",\"attachments\":[],\"reply\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"sender\":\"12\",\"kind\":\"poll\",\"excerpt\":\"Wollen wir morgen wandern?\",\"expires_at\":\"2026-11-10T12:00:00Z\"}}",
+        "reply": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Ja\",\"attachments\":[],\"reply\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"sender\":\"012\",\"kind\":\"text\",\"excerpt\":\"Wollen wir morgen wandern?\",\"expires_at\":\"2026-11-10T12:00:00Z\"}}",
+        "reply": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Ja\",\"attachments\":[],\"reply\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"sender\":\"12\",\"kind\":\"text\",\"excerpt\":\"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\",\"expires_at\":\"2026-11-10T12:00:00Z\"}}",
+        "reply": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Ja\",\"attachments\":[],\"reply\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"sender\":\"12\",\"kind\":\"text\",\"excerpt\":\"Wollen wir morgen wandern?\",\"expires_at\":\"2026-11-10 12:00\"}}",
+        "reply": null
+      }
+    ]
+  },
+  "pins": {
+    "build": [
+      {
+        "quote": {
+          "to": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "sender": "12",
+          "kind": "text",
+          "excerpt": "Treffpunkt: Bahnhof, 9 Uhr",
+          "expires_at": "2026-11-10T12:00:00Z"
+        },
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"pin\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"sender\":\"12\",\"kind\":\"text\",\"excerpt\":\"Treffpunkt: Bahnhof, 9 Uhr\",\"expires_at\":\"2026-11-10T12:00:00Z\"}}"
+      },
+      {
+        "quote": null,
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"pin\":{\"to\":\"\"}}"
+      }
+    ],
+    "parse": [
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"pin\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"sender\":\"12\",\"kind\":\"text\",\"excerpt\":\"Treffpunkt: Bahnhof, 9 Uhr\",\"expires_at\":\"2026-11-10T12:00:00Z\"}}",
+        "pin": {
+          "to": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "sender": "12",
+          "kind": "text",
+          "excerpt": "Treffpunkt: Bahnhof, 9 Uhr",
+          "expires_at": "2026-11-10T12:00:00Z"
+        }
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"pin\":{\"to\":\"\"}}",
+        "pin": {
+          "to": ""
+        }
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"pin\":{\"to\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\"}}",
+        "pin": null
+      }
+    ]
+  },
+  "polls": {
+    "build": [
+      {
+        "question": "  Wann wandern wir?  ",
+        "options": [
+          " Samstag",
+          "Sonntag "
+        ],
+        "multiple": false,
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Wann wandern wir?\",\"attachments\":[],\"poll\":{\"question\":\"Wann wandern wir?\",\"options\":[\"Samstag\",\"Sonntag\"],\"multiple\":false}}"
+      },
+      {
+        "vote": {
+          "poll": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "options": [
+            2,
+            0
+          ]
+        },
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"vote\":{\"poll\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"options\":[0,2]}}"
+      },
+      {
+        "vote": {
+          "poll": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "options": []
+        },
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"vote\":{\"poll\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"options\":[]}}"
+      },
+      {
+        "close": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"poll_close\":{\"poll\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\"}}"
+      }
+    ],
+    "parse": [
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Wann wandern wir?\",\"attachments\":[],\"poll\":{\"question\":\"Wann wandern wir?\",\"options\":[\"Samstag\",\"Sonntag\"],\"multiple\":false}}",
+        "poll": {
+          "question": "Wann wandern wir?",
+          "options": [
+            "Samstag",
+            "Sonntag"
+          ],
+          "multiple": false
+        },
+        "vote": null,
+        "poll_close": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Q\",\"attachments\":[],\"poll\":{\"question\":\"Wann wandern wir?\",\"options\":[\"nur eine\"],\"multiple\":false}}",
+        "poll": null,
+        "vote": null,
+        "poll_close": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Q\",\"attachments\":[],\"poll\":{\"question\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"options\":[\"Samstag\",\"Sonntag\"],\"multiple\":false}}",
+        "poll": null,
+        "vote": null,
+        "poll_close": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"Q\",\"attachments\":[],\"poll\":{\"question\":\"Wann wandern wir?\",\"options\":[\"a\",\"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\"],\"multiple\":false}}",
+        "poll": null,
+        "vote": null,
+        "poll_close": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"vote\":{\"poll\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"options\":[1]}}",
+        "poll": null,
+        "vote": {
+          "poll": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+          "options": [
+            1
+          ]
+        },
+        "poll_close": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"vote\":{\"poll\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"options\":[2,1]}}",
+        "poll": null,
+        "vote": null,
+        "poll_close": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"vote\":{\"poll\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",\"options\":[6]}}",
+        "poll": null,
+        "vote": null,
+        "poll_close": null
+      },
+      {
+        "plaintext": "{\"t\":\"mildcrowd-message\",\"v\":2,\"text\":\"\",\"attachments\":[],\"poll_close\":{\"poll\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\"}}",
+        "poll": null,
+        "vote": null,
+        "poll_close": {
+          "poll": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        }
+      }
+    ]
+  }
+}

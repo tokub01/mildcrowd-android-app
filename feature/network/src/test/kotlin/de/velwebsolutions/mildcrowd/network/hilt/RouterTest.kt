@@ -1,0 +1,70 @@
+package de.velwebsolutions.mildcrowd.network.hilt
+
+import android.content.ComponentName
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import dagger.hilt.android.testing.HiltTestApplication
+import de.velwebsolutions.mildcrowd.design.navigation.LocalNavigator
+import de.velwebsolutions.mildcrowd.design.navigation.Navigator
+import de.velwebsolutions.mildcrowd.design.navigation.NetworkRoute
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdTheme
+import de.velwebsolutions.mildcrowd.network.NetworkScreen
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
+
+/** Every network route reaches its screen with the view models Hilt creates (the app's entry point, `NetworkScreen`). */
+@HiltAndroidTest
+@RunWith(RobolectricTestRunner::class)
+@Config(application = HiltTestApplication::class)
+class RouterTest {
+    @get:Rule(order = 0)
+    val hilt = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
+    val compose = createEmptyComposeRule()
+
+    @Before
+    fun registerActivity() {
+        val app = ApplicationProvider.getApplicationContext<HiltTestApplication>()
+        shadowOf(app.packageManager).addActivityIfNotPresent(ComponentName(app, NetworkTestActivity::class.java))
+    }
+
+    @Test
+    fun `every route shows its screen`() {
+        val routes = listOf(
+            NetworkRoute.Source, NetworkRoute.Discover, NetworkRoute.Swipe, NetworkRoute.Post(1), NetworkRoute.EditPost(1),
+            NetworkRoute.CarryPost(1), NetworkRoute.Compose(), NetworkRoute.Crowds, NetworkRoute.Crowd("garten"),
+            NetworkRoute.CreateCrowd, NetworkRoute.EditCrowd("garten"), NetworkRoute.CloseCrowd("garten"),
+            NetworkRoute.CrowdStatistics("garten"), NetworkRoute.Profile("jonas"), NetworkRoute.EditProfile, NetworkRoute.Friends,
+            NetworkRoute.Statistics, NetworkRoute.TimeCapsules, NetworkRoute.Yearbook(),
+            NetworkRoute.Yearbook(
+                2025
+            ),
+            NetworkRoute.Invitations, NetworkRoute.Invitation("abc"), NetworkRoute.InvitationGroup("grp"), NetworkRoute.Search(),
+            NetworkRoute.Search("garten"), NetworkRoute.Tag("garten"), NetworkRoute.Bookmarks,
+            NetworkRoute.CollectPost(1, "garten"), NetworkRoute.CapsuleInvitations, NetworkRoute.Crowd("garten", collection = 4),
+            NetworkRoute.WeeklyLetter(), NetworkRoute.WeeklyLetter(5), NetworkRoute.Ideas(), NetworkRoute.Ideas(3),
+            NetworkRoute.CrowdMap(), NetworkRoute.CrowdMap("BY")
+        )
+        ActivityScenario.launch(NetworkTestActivity::class.java).use { scenario ->
+            routes.forEach { route ->
+                scenario.onActivity { activity ->
+                    activity.setContent {
+                        MildcrowdTheme { CompositionLocalProvider(LocalNavigator provides Navigator()) { NetworkScreen(route) } }
+                    }
+                }
+                compose.waitForIdle()
+            }
+        }
+    }
+}

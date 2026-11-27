@@ -1,0 +1,174 @@
+package de.velwebsolutions.mildcrowd.design.components
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarVisuals
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdColors
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdRadius
+import de.velwebsolutions.mildcrowd.design.theme.MildcrowdType
+import kotlinx.coroutines.delay
+
+/** The colour of a [Pill]. */
+enum class PillTone {
+    /** Something new or waiting (`bg-sun text-sun-ink`). */
+    Sun,
+
+    /** A good state (`bg-spring`). */
+    Spring,
+    Night,
+    Dune,
+
+    /** Counts on paper (`bg-sand`). */
+    Sand,
+    Outline
+}
+
+/** A small rounded label: "Neu", a status, a count or a role. */
+@Composable
+fun Pill(text: String, modifier: Modifier = Modifier, tone: PillTone = PillTone.Dune, icon: ImageVector? = null) {
+    val foreground = when (tone) {
+        PillTone.Sun -> MildcrowdColors.SunInk
+        PillTone.Spring -> MildcrowdColors.SpringInk
+        PillTone.Night -> MildcrowdColors.OnNight
+        else -> MildcrowdColors.Night
+    }
+    val background = when (tone) {
+        PillTone.Sun -> MildcrowdColors.Sun
+        PillTone.Spring -> MildcrowdColors.Spring
+        PillTone.Night -> MildcrowdColors.Night
+        PillTone.Dune -> MildcrowdColors.Dune
+        PillTone.Sand -> MildcrowdColors.Sand
+        PillTone.Outline -> Color.Transparent
+    }
+    Row(
+        modifier = modifier
+            .background(background, CircleShape)
+            .then(if (tone == PillTone.Outline) Modifier.border(1.dp, MildcrowdColors.DuneLine, CircleShape) else Modifier)
+            .padding(horizontal = 9.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (icon != null) Icon(icon, contentDescription = null, tint = foreground, modifier = Modifier.size(14.dp))
+        Text(text, style = MildcrowdType.Caption.copy(fontWeight = FontWeight.ExtraBold), color = foreground)
+    }
+}
+
+/**
+ * The confirmation of the last action and the last error as a Material snackbar at the bottom of the screen (the web's
+ * `x-mildcrowd.status`, a toast on iOS): always in view whatever was tapped, announced by TalkBack, with a haptic, gone after
+ * a few seconds (an error after 8, a confirmation after 5) or when closed. An error and a confirmation queue one after
+ * the other; each gets its seconds from the moment it is in view, so one that waited behind the other is shown in full.
+ * Setting a text shows it; the snackbar calls the dismiss callback to set it back to null.
+ */
+@Composable
+fun BoxScope.StatusToast(
+    message: String?,
+    error: String?,
+    onDismissMessage: () -> Unit,
+    onDismissError: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptics = LocalHapticFeedback.current
+    val host = remember { SnackbarHostState() }
+    val currentDismissMessage by rememberUpdatedState(onDismissMessage)
+    val currentDismissError by rememberUpdatedState(onDismissError)
+    LaunchedEffect(error) {
+        if (error != null) {
+            host.showSnackbar(StatusVisuals(error, isError = true))
+            currentDismissError()
+        }
+    }
+    LaunchedEffect(message) {
+        if (message != null) {
+            host.showSnackbar(StatusVisuals(message, isError = false))
+            currentDismissMessage()
+        }
+    }
+    // The snackbar in view: its haptic, and its seconds counted from now – not from when its text was set.
+    val shown = host.currentSnackbarData
+    LaunchedEffect(shown) {
+        if (shown != null) {
+            val visuals = shown.visuals as StatusVisuals
+            haptics.performHapticFeedback(visuals.haptic)
+            delay(visuals.shownMillis)
+            shown.dismiss()
+        }
+    }
+    SnackbarHost(
+        host,
+        modifier = modifier.align(Alignment.BottomCenter).widthIn(max = 720.dp).padding(horizontal = 8.dp, vertical = 8.dp)
+    ) { data ->
+        val isError = (data.visuals as? StatusVisuals)?.isError == true
+        Snackbar(
+            modifier = Modifier
+                .testTag(if (isError) "status.error" else "status.message")
+                .semantics { liveRegion = LiveRegionMode.Polite },
+            shape = RoundedCornerShape(MildcrowdRadius.CHIP.dp),
+            containerColor = if (isError) MildcrowdColors.Danger else MildcrowdColors.Night,
+            contentColor = if (isError) MildcrowdColors.Paper else MildcrowdColors.OnNight,
+            dismissAction = {
+                IconButton(onClick = { data.dismiss() }) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Schließen")
+                }
+            }
+        ) {
+            Text(data.visuals.message, style = MildcrowdType.Small)
+        }
+    }
+}
+
+private class StatusVisuals(override val message: String, val isError: Boolean) : SnackbarVisuals {
+    override val actionLabel: String? = null
+    override val withDismissAction: Boolean = true
+    override val duration: SnackbarDuration = SnackbarDuration.Indefinite
+
+    /** How long it stays in view once it is shown: an error longer, so it can be read. */
+    val shownMillis: Long = if (isError) 8_000 else 5_000
+
+    val haptic: HapticFeedbackType = if (isError) HapticFeedbackType.Reject else HapticFeedbackType.Confirm
+}

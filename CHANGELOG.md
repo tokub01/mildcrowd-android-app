@@ -1,0 +1,197 @@
+# Changelog
+
+<!-- Generated from resources/data/releases.json in the web repository by `php artisan mildcrowd:releases changelog`. Do not edit by hand. -->
+
+Alle Versionen von Mildcrowd für Android. Eine Versionsnummer gilt für Web, iOS und Android zugleich; alle Versionen stehen auf https://mildcrowd.com/neuigkeiten.
+
+## Wie Mildcrowd gebaut wird
+
+Mildcrowd wird von Tobias Kubina - VelWebSolutions entwickelt, mit Unterstützung von KI. Wie das genau aussieht, erzählen wir hier offen – und nur so weit, wie es sich aus der Versionsgeschichte der drei Projekte (Website, iOS-App, Android-App) belegen lässt.
+
+27. Juni 2026: Das Projekt wird angelegt, ein leeres Grundgerüst. Ob dabei schon KI geholfen hat, lässt sich aus der Versionsgeschichte nicht belegen.
+
+Ab 11. Oktober 2026: Mildcrowd entsteht mit KI-Werkzeugen. Der Arbeitsplan von damals beschreibt die Aufteilung: Claude (Claude Code von Anthropic) schreibt für jeden Abschnitt die Vorgaben, baut Oberflächen und legt die Änderungen an. Codex (OpenAI) baut Teile der Server-Technik und prüft unter anderem die Datenschutzerklärung. Antigravity (Google) prüft Bedienung, Barrierefreiheit und die Verschlüsselung des Chats. Jedes Werkzeug prüft die Arbeit eines anderen und schreibt eigene, unabhängige Tests dagegen.
+
+16. und 17. Oktober 2026: Hier werden Codex und Antigravity zum letzten Mal erwähnt, etwa bei der Prüfung der Zahlungen, der Echtzeit-Verbindung und der Privatsphäre-Einstellungen. Für den 18. bis 21. Oktober gibt es keinen Beleg, welches Werkzeug genutzt wurde.
+
+Ab 22. Oktober 2026: Seitdem trägt jede Änderung in allen drei Projekten den Vermerk, dass sie gemeinsam mit Claude entstanden ist (Modell Claude Opus 5.5). Die iOS-App und die Android-App sind von Anfang an so entstanden. Seitdem wird Mildcrowd also hauptsächlich mit Claude Code gebaut.
+
+Was dabei gleich bleibt: Ein Mensch entscheidet, was in Mildcrowd kommt, beauftragt jede Runde und prüft sie. Jede Änderung wird durch automatische Tests abgesichert, bevor sie ausgeliefert wird.
+
+## 0.29.0 – 2026-11-23 – Mildcrowd
+
+Wir heißen jetzt Mildcrowd: neuer Name, neue Adresse mildcrowd.com, neues Aussehen und neue Wörter. Dazu neun Themen-Crowds zum Start, eine Suche nach passenden Crowds und freiwillige Tipps per E-Mail.
+
+- **Neu:** Wir heißen jetzt Mildcrowd. Du findest uns unter mildcrowd.com, mit neuem Zeichen und dem neuen Aussehen „Blaue Stunde“.
+- **Neu:** Neue Wörter: Es gibt jetzt Crowds und Posts, deine Startseite heißt Start, wer dir folgt, sind deine Follower, und Weitergeben heißt Teilen. Die mittlere Mitgliedschaft heißt Mittendrin.
+- **Neu:** Zum Start warten neun Themen-Crowds auf dich, und in der Einführung findest du Crowds, die zu dir passen.
+- **Verbessert:** Ruhigeres Aussehen: Karten mit feiner Linie und weichem Schatten, ruhigere Knöpfe. Das Haus im Menü führt zu Start.
+- **Verbessert:** Rechnungsnummern beginnen jetzt mit MC-, Gutscheincodes mit MILD-.
+- **Verbessert:** Dein Datenexport heißt jetzt mildcrowd-daten.zip. Die Datenschutzerklärung nennt den neuen Namen (Stand 23.11.2026), sonst ändert sich darin nichts.
+- **Entfernt:** Links aus der Zeit vor dem neuen Namen, die auf eine Crowd zeigen, führen nicht mehr weiter. Crowds findest du unter mildcrowd.com/crowds.
+
+## 0.28.0 – 2026-11-07 – Was wir sagen, tun wir
+
+Alle Texte auf Website, im Mitgliederbereich und in den Apps sind gegen AGB, Datenschutzerklärung und Code geprüft und angeglichen. Neu: Patenplätze, Gründungsabzeichen, Gemeinsam starten mit Gruppenlink, Beschwerde direkt vom Sperrbildschirm.
+
+- **Neu:** Patenplätze: Wer sich den Beitrag nicht leisten kann, fragt unter mildcrowd.com/patenplatz einen Patenplatz an, ohne Nachweise. Mitglieder spenden Patenplätze beim Kauf einer Geschenk-Mitgliedschaft, Organisationen über das Formular für Organisationen.
+- **Neu:** Gemeinsam starten: Lege eine Gruppe mit Namen an, teile einen Gruppenlink und sieh, wie viele schon dabei sind. Für jede Person, die über deinen Gruppenlink beitritt, bekommst du wie bei persönlichen Einladungen einen Freimonat.
+- **Neu:** Gründungsmitglieder können das Abzeichen „Gründungsmitglied“ an ihrem Profil einschalten, im Privatsphäre-Center, jederzeit wieder aus.
+- **Neu:** Wer gesperrt ist, kann direkt vom Sperrbildschirm Beschwerde gegen die Entscheidung einlegen; eine andere Person aus dem Team prüft sie, und du bekommst eine Eingangsbestätigung per E-Mail.
+- **Neu:** Wer die Mitgliedschaft über den App Store oder Google Play abschließt, bekommt jetzt wie im Web die Vertragsbestätigung mit AGB und Widerrufsbelehrung per E-Mail, auch bei einem Stufenwechsel im Store.
+- **Verbessert:** Beschwerdeformular, Entscheidungsmails und Sperrbildschirm nennen die Rechtsbehelfe jetzt richtig: Der Rechtsweg steht offen; eine außergerichtliche Streitbeilegungsstelle gibt es für Mildcrowd nicht.
+- **Verbessert:** Startseite, Preise, Hilfe, Gründungsseite und Mitgliederbereich sagen genau, was Mildcrowd tut: wer Daten erhält, wie der Stufenwechsel läuft, welche Zahlwege gerade möglich sind, wie die Preisgarantie gilt, was beim Löschen bleibt und dass Ideen und Zeitkapseln automatisch geprüft werden.
+- **Verbessert:** Die Hilfe erklärt die automatische Prüfung durch ein Sprachmodell und den Beschwerdeweg.
+- **Verbessert:** Der Kaufbildschirm nennt das Widerrufsrecht und den Weg über Google Play und verlinkt die Widerrufsbelehrung. Die Anmeldung sagt, dass sie nach 90 Tagen ohne Nutzung endet. Der Play-Eintrag beschreibt die Ideen-Funktion so, wie sie ist.
+
+## 0.27.0 – 2026-11-07 – Startklar
+
+Die Rechtstexte sind final, der Datenexport enthält alles, was du selbst angelegt hast, App-Anmeldungen laufen nach 90 Tagen ohne Nutzung ab, und das Moderationsteam bekommt Vertretung und Fristen-Erinnerung.
+
+- **Neu:** Dein Datenexport enthält jetzt auch Reaktionen, blockierte und stummgeschaltete Personen, Hinweise und ihre Einstellungen, Einladungen, Zahlungen mit Rechnungsnummern, App-Anmeldungen, Begleitplätze, Treffen, Ideen und Sammlungen – alles, was du selbst in Mildcrowd angelegt hast.
+- **Neu:** Das Moderationsteam kann Abwesenheit eintragen, sieht überfällige Fälle und wird erinnert, wenn ein Fall länger als 48 Stunden offen ist. Beschwerden gegen Entscheidungen des Betreibers prüft immer eine andere Person.
+- **Verbessert:** Die Rechtstexte gelten jetzt endgültig; der Hinweis „Entwurf“ ist von allen Seiten verschwunden, jede Seite zeigt ihr Datum.
+- **Verbessert:** Eine App-Anmeldung, die 90 Tage nicht benutzt wurde, läuft ab; die App meldet dich dann ab. Push-Geräte ohne Zustellung seit 90 Tagen werden entfernt. So steht es jetzt auch in der Datenschutzerklärung.
+- **Verbessert:** Ein Begleitplatz bei einem Mäzen endet, wenn die Mäzen-Mitgliedschaft endet; wir halten den Zeitpunkt fest, und für das Konto gilt ab dann die normale Frist.
+- **Entfernt:** Die Datenbanktabellen der früheren Abstimmungen sind gelöscht; Umfragen in Posts und Ideen bleiben.
+
+## 0.26.0 – 2026-11-07 – Was drinsteht, gilt
+
+Jede Zusage unserer AGB, Datenschutzerklärung und Regeln ist jetzt im Code eingelöst und durch Tests belegt. Dazu neu: Beitragsstufe selbst ändern, Crowd-Texte werden bei Verdacht geprüft, Rechtstexte tragen ihr Datum.
+
+- **Neu:** Du kannst deine Beitragsstufe jetzt selbst ändern, im Web und in den Apps. Die neue Stufe gilt sofort, der neue Beitrag ab der nächsten Abbuchung, die Bestätigung mit Vertragstext kommt per E-Mail.
+- **Neu:** Name, Beschreibung und Hausregeln einer Crowd werden wie Posts und Profile geprüft: Bei Verdacht sehen andere bis zur Prüfung durch einen Menschen einen Platzhalter, die Gründer:in bekommt Bescheid.
+- **Neu:** Wer unserer AGB-Änderung widersprochen hat, sieht auch nach dem Stichtag, dass für ihn die bisherige Fassung gilt. Die Mitgliedschaft zeigt jetzt, wann du dem Vertragstext zugestimmt hast.
+- **Neu:** Beim Melden gibt es die Kategorie „Anbieten oder Suchen sexueller oder bezahlter Dienste“, auch im Chat.
+- **Verbessert:** Jeder Rechtstext zeigt sein Datum („Stand“), und die gespeicherte Vertragsfassung trägt dasselbe Datum.
+- **Verbessert:** Im Chat führt das Anbieten bezahlter Dienste nach Prüfung durch einen Menschen direkt zur Sperre, wie es in den Regeln steht.
+- **Verbessert:** Nach einer dauerhaften Sperre kann mit derselben E-Mail-Adresse oder Handynummer kein neues Konto angelegt werden; wir merken uns dafür nur eine Prüfsumme.
+- **Verbessert:** Die AGB sagen jetzt genau, was der Code tut: welche Maßnahmen es gibt, dass der Zugang bis zu sieben Tage über das bezahlte Ende weiterläuft, solange die Verlängerung läuft, und dass ein weiteres festes Jahr per E-Mail bestellbar ist.
+- **Behoben:** Im Kapitel „Viel besprochen“ stand der Hinweis, warum ein Post dort ist, nur auf der ersten Karte. Jetzt auf jeder.
+
+## 0.25.3 – 2026-11-04 – Echte Crowds
+
+Eine Crowd braucht jetzt einen echten Namen, eine echte Beschreibung und echte Hausregeln – Platzhalter werden abgelehnt.
+
+- **Verbessert:** Beim Gründen und Bearbeiten einer Crowd prüft Mildcrowd jetzt Name, Beschreibung und Hausregeln: Platzhalter wie „Test“, „asdf“ oder „Keine“ und beleidigende Texte werden abgelehnt. Das gilt auch in den Apps, weil der Server prüft.
+
+## 0.25.2 – 2026-11-04 – Passt in jede Zeile
+
+Der Hinweis im leeren Chatfeld ist kürzer und passt jetzt auch auf schmale Handys.
+
+- **Behoben:** Im leeren Chatfeld steht jetzt kurz „Bis zu 4.000 Zeichen“ und wird nicht mehr abgeschnitten.
+
+## 0.25.1 – 2026-11-04 – Mehr Platz auf großen Bildschirmen
+
+Auf iPad und großen Android-Geräten stehen Chat-Liste, Unterhaltung und Details nebeneinander, und im Web sitzt im Chat alles an seinem Platz.
+
+- **Neu:** Auf großen Bildschirmen öffnen sich die Chat-Details neben der Unterhaltung.
+
+## 0.25.0 – 2026-11-04 – Klarere Posts, ruhigerer Chat
+
+Antworten gibt es nur noch dort, wo sie erlaubt sind, Namen in jeder Schrift sehen richtig aus, du wählst die Farbe deiner Initialen, und der Chat schützt besser vor Schreien und Fluten.
+
+- **Neu:** Farbe deiner Initialen: Ohne Profilbild wählst du in den Profileinstellungen eine Farbe – oder lässt „Automatisch“.
+- **Neu:** Teilen geht jetzt auch ohne eigene Worte.
+- **Neu:** Der Chat bittet ruhig um weniger Großbuchstaben und Wiederholungen und legt nach sehr vielen Nachrichten kurz eine Pause ein.
+- **Verbessert:** Darf man auf einen Post nicht antworten, steht dort statt „Antworten“ kurz, wer antworten darf. Teilen geht dann nur ohne eigenen Text.
+- **Verbessert:** Die Kopfzeile jedes Posts ist überall gleich aufgebaut: Name, dann @Name · Crowd · Zeit – ohne überflüssige Punkte.
+- **Verbessert:** Ein beendeter Chat sagt jetzt, was passiert ist: wer ihn verlassen hat oder dass es das Konto nicht mehr gibt.
+- **Verbessert:** Das Eingabefeld im Chat nennt immer, wie viele Zeichen hineinpassen, mit Tausenderpunkt („4.000“).
+- **Verbessert:** Im Chat haben Nachrichten mehr Luft zum Rand, die Abstände sind überall gleich.
+- **Behoben:** Am Ende einer Liste erscheint keine Fehlermeldung mehr, die Liste endet einfach.
+- **Behoben:** Namen wie „Yıldız“ oder „İlkay Şahin“ sehen jetzt richtig aus, auch in den Initialen.
+
+## 0.24.0 – 2026-11-03 – Ruhigerer Chat, ruhigerer Start
+
+Der Chat ist ruhiger gestaltet und lässt sich mit Wischgesten bedienen, der Weg in Mildcrowd ist kürzer, und Mildcrowd ist ab jetzt ein Netzwerk für Erwachsene.
+
+- **Neu:** Diese Versionshinweise: Bei jeder Version steht offen, was neu ist, was besser wurde und was behoben ist – und wie Mildcrowd mit KI gebaut wird.
+- **Neu:** Wischen zum Antworten, Stummschalten, Verlassen und Gelesen-Markieren; alles auch als Knopf.
+- **Verbessert:** Ein ruhigerer Chat: Nachrichten gruppiert, die Zeit in der Blase, Tages-Trenner und „Neue Nachrichten“.
+- **Verbessert:** Registrieren in kleinen Schritten mit einem vorgeschlagenen Benutzernamen; keine Pflicht-Einführung mehr.
+- **Verbessert:** Den Chat startest du mit einem Knopf; eine leere Chat-Liste schlägt dir Menschen vor.
+- **Verbessert:** Mildcrowd ist für Erwachsene: Registrieren geht ab 18 Jahren.
+- **Behoben:** Im Eingabebereich überlappt nichts mehr, Zeichengrenze und Zeiten sind klar lesbar.
+- **Entfernt:** Abstimmungen unter Mitgliedern. Gehört wirst du jetzt über „Ideen für Mildcrowd“.
+
+## 0.23.0 – 2026-11-03 – Ruhe, Treffen und Erinnerungen
+
+Ein Ruhemodus, Umfragen und Treffen in Crowds, gemeinsame Sammlungen, ein Wochenbrief, ein dunkles Design und eine Karte der Crowds.
+
+- **Neu:** Ruhemodus für 1 Stunde, 8 Stunden, bis 7 Uhr oder bis du ihn ausschaltest.
+- **Neu:** „Du hast alles Neue gesehen“: Die Startseite sagt, wann du durch bist.
+- **Neu:** „Heute vor einem Jahr“ und „Deine Zeit in Mildcrowd“, gezählt nur auf deinem Gerät.
+- **Neu:** Umfragen in Posts, Treffen in Crowds und Paten, die neue Mitglieder begrüßen.
+- **Neu:** Gemeinsame Sammlungen in Crowds und gemeinsame Zeitkapseln.
+- **Neu:** Der Crowd-Wochenbrief am Sonntagabend und „Ideen für Mildcrowd“.
+- **Neu:** „Wohin dein Beitrag geht“: echte Zahlen und Finanzberichte, sobald sie veröffentlicht sind.
+- **Neu:** Dunkles Design und eine Karte der Crowds nach Bundesland.
+
+## 0.22.0 – 2026-11-03 – Reaktionen, Antworten und Umfragen im Chat
+
+Der Chat wird lebendiger: eigene Hintergründe, Effekte, Reaktionen, Antworten, Umfragen und eine angeheftete Nachricht.
+
+- **Neu:** Persönliche Chat-Hintergründe und Nachrichten mit Effekt, etwa Konfetti oder Herzen.
+- **Neu:** Auf Nachrichten reagieren und direkt antworten.
+- **Neu:** Eine angeheftete Nachricht und Umfragen im Chat.
+
+## 0.21.0 – 2026-11-02 – Leichter beitreten, besser sprechen
+
+Vier klare Schritte zur Mitgliedschaft, ein neuer Eingabebereich im Chat und bessere Sprachnachrichten.
+
+- **Neu:** Vier Schritte zur Mitgliedschaft: Konto, E-Mail-Adresse, Handynummer, Beitrag.
+- **Neu:** Sprachnachrichten mit Abspielen und Pausieren, Vorspulen, Zeit und Geschwindigkeit.
+- **Neu:** Ein Tipp auf ein Profilbild im Chat öffnet das Profil.
+- **Neu:** Sprachnachrichten als Text, erkannt nur auf deinem Gerät.
+- **Verbessert:** Der Eingabebereich im Chat: ein Knopf für Anhänge, ein breites Feld, ein Knopf für Aufnehmen und Senden.
+- **Verbessert:** Push-Mitteilungen für Chats sind von Anfang an eingeschaltet.
+- **Sicherheit:** Weitere Schwachstellen wurden behoben, unter anderem bei Chat-Anhängen und Zahlungen.
+
+## 0.20.1 – 2026-10-29 – Gründliche Code-Prüfung
+
+Eine vollständige Prüfung des Codes auf Sicherheit und Fehler, mit einem Test für jeden Fund.
+
+- **Behoben:** Kleinere Fehler, die die Prüfung gefunden hat.
+- **Sicherheit:** Schwachstellen aus derselben Prüfung wurden auch in der Android-App behoben.
+
+## 0.20.0 – 2026-10-28 – Zeitkapseln, Jahrbuch und Anhänge im Chat
+
+Die Mitgliedsstufen bekommen echte Vorteile, und der Chat kann Fotos, Sprachnachrichten, Videos und Dateien – verschlüsselt.
+
+- **Neu:** Zeitkapseln, ein druckbares Jahrbuch, Begleitplätze und ein Unterstützer-Zeichen, je nach Mitgliedsstufe.
+- **Neu:** Ende-zu-Ende-verschlüsselte Fotos, Sprachnachrichten, kurze Videos und Dateien im Chat, auch zum einmaligen Ansehen.
+- **Neu:** Profilfotos im Chat und eine kurze Statuszeile unter deinem Namen.
+- **Neu:** Aus anderen Apps direkt in Mildcrowd teilen.
+
+## 0.19.0 – 2026-10-27 – Ein Preis überall
+
+Gleiche Preise im Browser, im App Store und bei Google Play, und die ersten offiziellen Crowds.
+
+- **Neu:** Bestätigungs- und Code-Links von der Website öffnen sich in der App.
+- **Verbessert:** Eine Preisliste für Browser, App Store und Google Play: Du zahlst überall gleich viel.
+
+## 0.18.0 – 2026-10-26 – Nur für Mitglieder, Anmelden ohne Passwort
+
+Mildcrowd ist jetzt ganz den Mitgliedern vorbehalten, und du meldest dich mit Code oder Passkey an.
+
+- **Neu:** Anmelden mit einem Code per E-Mail oder SMS oder mit einem Passkey.
+- **Neu:** Deine Handynummer wird per SMS bestätigt, bevor du bezahlst und Mildcrowd nutzt.
+- **Neu:** Links aus E-Mails öffnen direkt die App, wenn sie installiert ist.
+- **Neu:** Mitglied werden direkt in der App über Google Play.
+- **Neu:** Push-Mitteilungen über Firebase; ein eigener Kanal „Chats“.
+- **Verbessert:** Mildcrowd ist nur für Mitglieder: Nichts ist mehr öffentlich, nichts landet in Suchmaschinen.
+- **Entfernt:** Die kostenlose Probezeit und der Nur-Lesen-Modus.
+
+## 0.17.0 – 2026-10-25 – Mildcrowd für Android
+
+Die erste Version der Android-App – und ein Code statt Link zum Bestätigen der E-Mail-Adresse.
+
+- **Neu:** Deine E-Mail-Adresse bestätigst du auch mit einem sechsstelligen Code.
+- **Neu:** Die Android-App mit Startseite, Posts, Crowds, Profilen und Suche.
+- **Neu:** Der Ende-zu-Ende-verschlüsselte Chat, kompatibel mit Browser und iOS.
+- **Neu:** Mitgliedschaft mit Rechnungen, Einstellungen, Privatsphäre und Hinweisen.
+- **Neu:** Moderation und Verwaltung für das Team.
+- **Verbessert:** Häkchen und Schalter zeigen deutlich, ob sie an oder aus sind.
+- **Verbessert:** Namen werden bei der Anmeldung geprüft wie Posts.
+- **Verbessert:** Bedienung, wie man sie von Android kennt.

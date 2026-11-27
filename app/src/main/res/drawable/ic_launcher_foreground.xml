@@ -1,28 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The logo sign of `x-oasis.logo` in the web SVG's 120 × 120 grid, scaled into the 66 dp safe zone of 108 dp. -->
+<!-- The Mildcrowd sign of `x-mildcrowd.logo` (two people of the same size forming an "m": ink in front, coral behind),
+     drawn in its 64 grid and scaled into the 66 dp safe zone of 108 dp. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <group
-        android:scaleX="0.55"
-        android:scaleY="0.55"
-        android:translateX="21"
-        android:translateY="17">
+        android:scaleX="0.95"
+        android:scaleY="0.95"
+        android:translateX="23.600"
+        android:translateY="24.312">
         <path
-            android:fillColor="#E06A43"
-            android:pathData="M26,62 A34,34 0 0,1 94,62 Z" />
+            android:pathData="M32,51 V35 A9.5,9.5 0 0,1 51,35 V51"
+            android:strokeWidth="8"
+            android:strokeColor="#FF8257"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
         <path
-            android:pathData="M14,76 q11.5,-9 23,0 t23,0 t23,0 t23,0"
-            android:strokeWidth="7"
-            android:strokeColor="#2E9E95"
-            android:strokeLineCap="round" />
+            android:fillColor="#FF8257"
+            android:pathData="M35.5,13.5 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 Z" />
         <path
-            android:pathData="M32,92 q9.5,-8 19,0 t19,0 t19,0"
-            android:strokeWidth="7"
-            android:strokeAlpha="0.6"
-            android:strokeColor="#2E9E95"
-            android:strokeLineCap="round" />
+            android:pathData="M13,51 V35 A9.5,9.5 0 0,1 32,35 V51"
+            android:strokeWidth="8"
+            android:strokeColor="#171A2E"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:fillColor="#171A2E"
+            android:pathData="M16.5,13.5 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 Z" />
     </group>
 </vector>

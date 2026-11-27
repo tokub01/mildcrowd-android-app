@@ -10,8 +10,8 @@
     "title": "Wer dich sieht"
    },
    {
-    "key": "oasen",
-    "title": "Oasen finden"
+    "key": "crowds",
+    "title": "Crowds finden"
    },
    {
     "key": "menschen",
@@ -25,11 +25,11 @@
   "colors": [
    {
     "value": "sun",
-    "label": "Sonne"
+    "label": "Blau"
    },
    {
     "value": "spring",
-    "label": "Quelle"
+    "label": "Pfirsich"
    },
    {
     "value": "night",
@@ -37,7 +37,7 @@
    },
    {
     "value": "dune",
-    "label": "Düne"
+    "label": "Nebel"
    }
   ],
   "profile_audience": "everyone",
@@ -66,7 +66,7 @@
     "label": "Nur für Mitglieder"
    }
   ],
-  "oases": [
+  "crowds": [
    {
     "id": 1,
     "slug": "korn-licht",
@@ -87,6 +87,7 @@
     "banner_url": null,
     "joined": false
    }
-  ]
+  ],
+  "crowds_hand_picked": true
  }
 }

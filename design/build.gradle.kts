@@ -1,15 +1,15 @@
 plugins {
-    alias(libs.plugins.oasis.android.library)
+    alias(libs.plugins.mildcrowd.android.library)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.roborazzi)
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.design"
+    namespace = "de.velwebsolutions.mildcrowd.design"
     buildFeatures.compose = true
 }
 
-// Colours, fonts, shared components and the navigation routes of all areas (OasisDesign on iOS).
+// Colours, fonts, shared components and the navigation routes of all areas (MildcrowdDesign on iOS).
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(project(":core"))

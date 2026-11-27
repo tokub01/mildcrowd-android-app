@@ -1,12 +1,12 @@
 plugins {
-    alias(libs.plugins.oasis.android.feature)
+    alias(libs.plugins.mildcrowd.android.feature)
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.account"
+    namespace = "de.velwebsolutions.mildcrowd.account"
 }
 
-// Sign-in, registration, settings, privacy, safety and the member pages (OasisAccount on iOS).
+// Sign-in, registration, settings, privacy, safety and the member pages (MildcrowdAccount on iOS).
 dependencies {
     implementation(libs.androidx.activity.compose)
     // Passkeys through Credential Manager (Google Play services below Android 14) and SMS User Consent for codes.

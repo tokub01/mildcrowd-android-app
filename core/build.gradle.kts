@@ -1,11 +1,11 @@
 plugins {
-    alias(libs.plugins.oasis.android.library)
+    alias(libs.plugins.mildcrowd.android.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.core"
+    namespace = "de.velwebsolutions.mildcrowd.core"
 }
 
 dependencies {

@@ -1,14 +1,14 @@
 plugins {
-    alias(libs.plugins.oasis.android.library)
+    alias(libs.plugins.mildcrowd.android.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
 
 android {
-    namespace = "de.velwebsolutions.oasis.realtime"
+    namespace = "de.velwebsolutions.mildcrowd.realtime"
 }
 
-// Reverb (Pusher protocol) client implementing `:core`'s RealtimeService (OasisRealtime on iOS).
+// Reverb (Pusher protocol) client implementing `:core`'s RealtimeService (MildcrowdRealtime on iOS).
 dependencies {
     implementation(project(":core"))
     implementation(libs.hilt.android)

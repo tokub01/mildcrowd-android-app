@@ -3,7 +3,7 @@
   {
    "id": 3,
    "display_name": "Aylin Demir",
-   "email": "aylin@demo.oasis.tld",
+   "email": "aylin@demo.mildcrowd.tld",
    "role": {
     "value": "member",
     "label": "Mitglied"
@@ -20,7 +20,7 @@
   {
    "id": 6,
    "display_name": "Ben Hoffmann",
-   "email": "ben@demo.oasis.tld",
+   "email": "ben@demo.mildcrowd.tld",
    "role": {
     "value": "member",
     "label": "Mitglied"
@@ -37,7 +37,7 @@
   {
    "id": 8,
    "display_name": "Emil Novak",
-   "email": "emil@demo.oasis.tld",
+   "email": "emil@demo.mildcrowd.tld",
    "role": {
     "value": "member",
     "label": "Mitglied"
@@ -54,7 +54,7 @@
   {
    "id": 2,
    "display_name": "Jonas Weber",
-   "email": "jonas@demo.oasis.tld",
+   "email": "jonas@demo.mildcrowd.tld",
    "role": {
     "value": "member",
     "label": "Mitglied"
@@ -71,7 +71,7 @@
   {
    "id": 7,
    "display_name": "Lea Marquardt",
-   "email": "lea@demo.oasis.tld",
+   "email": "lea@demo.mildcrowd.tld",
    "role": {
     "value": "member",
     "label": "Mitglied"
@@ -88,7 +88,7 @@
   {
    "id": 4,
    "display_name": "Lukas Brandt",
-   "email": "lukas@demo.oasis.tld",
+   "email": "lukas@demo.mildcrowd.tld",
    "role": {
     "value": "member",
     "label": "Mitglied"
@@ -122,7 +122,7 @@
   {
    "id": 1,
    "display_name": "Mira Sol",
-   "email": "mira@demo.oasis.tld",
+   "email": "mira@demo.mildcrowd.tld",
    "role": {
     "value": "member",
     "label": "Mitglied"
@@ -139,7 +139,7 @@
   {
    "id": 9,
    "display_name": "Moderationsteam (Beispiel)",
-   "email": "moderation@demo.oasis.tld",
+   "email": "moderation@demo.mildcrowd.tld",
    "role": {
     "value": "moderator",
     "label": "Moderation"
@@ -156,7 +156,7 @@
   {
    "id": 5,
    "display_name": "Sara Okafor",
-   "email": "sara@demo.oasis.tld",
+   "email": "sara@demo.mildcrowd.tld",
    "role": {
     "value": "member",
     "label": "Mitglied"
@@ -173,7 +173,7 @@
   {
    "id": 12,
    "display_name": "Stella Staff",
-   "email": "staff-app@oasis.test",
+   "email": "staff-app@mildcrowd.test",
    "role": {
     "value": "admin",
     "label": "Admin"
