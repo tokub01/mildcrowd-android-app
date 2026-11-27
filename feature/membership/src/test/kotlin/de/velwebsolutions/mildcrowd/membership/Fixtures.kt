@@ -19,12 +19,12 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 
 /** The Play products as the server lists them (`google.products`), with the prices they were created with. */
 object Catalogue {
-    const val SOLIDAR_MONTHLY = "de.velwebsolutions.mildcrowd.solidar.monat"
-    const val SOLIDAR_YEARLY = "de.velwebsolutions.mildcrowd.solidar.jahr"
-    const val MITTENDRIN_MONTHLY = "de.velwebsolutions.mildcrowd.mittendrin.monat"
-    const val MITTENDRIN_YEARLY = "de.velwebsolutions.mildcrowd.mittendrin.jahr"
-    const val MAEZEN_MONTHLY = "de.velwebsolutions.mildcrowd.maezen.monat"
-    const val MAEZEN_YEARLY = "de.velwebsolutions.mildcrowd.maezen.jahr"
+    const val SOLIDAR_MONTHLY = "mildcrowd.solidar.monat"
+    const val SOLIDAR_YEARLY = "mildcrowd.solidar.jahr"
+    const val MITTENDRIN_MONTHLY = "mildcrowd.mittendrin.monat"
+    const val MITTENDRIN_YEARLY = "mildcrowd.mittendrin.jahr"
+    const val MAEZEN_MONTHLY = "mildcrowd.maezen.monat"
+    const val MAEZEN_YEARLY = "mildcrowd.maezen.jahr"
 
     /** One listed product. */
     data class Entry(val id: String, val tier: String, val rhythm: String, val price: String)
@@ -47,7 +47,7 @@ object Catalogue {
 object Fixtures {
     /** A member without membership (there is no free trial): only "Mitglied werden" is open. */
     val noMembershipOverview = """
-        {"data":{"state":"expired","subscription":null,"gift":null,"is_founding_member":false,"remaining_founding_seats":1000,"can_cancel":false,"can_withdraw":false,"purchased_gifts":[],"gift_offers":[{"tier":"solidar","name":"Solidar","price_label":"12 Monate für 30 €"},{"tier":"mittendrin","name":"Mittendrin","price_label":"12 Monate für 50 €"},{"tier":"maezen","name":"Mäzen","price_label":"12 Monate für 120 €"}],"checkout_enabled":true,"referral":{"earned_this_year":0,"waiting":0,"months_per_year":12},"apple":{"managed_by_apple":false,"manage_url":"https:\/\/apps.apple.com\/account\/subscriptions"},"google":{"available":true,"account_id":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08","products":[{"id":"de.velwebsolutions.mildcrowd.solidar.monat","tier":"solidar","rhythm":"monat"},{"id":"de.velwebsolutions.mildcrowd.solidar.jahr","tier":"solidar","rhythm":"jahr"},{"id":"de.velwebsolutions.mildcrowd.mittendrin.monat","tier":"mittendrin","rhythm":"monat"},{"id":"de.velwebsolutions.mildcrowd.mittendrin.jahr","tier":"mittendrin","rhythm":"jahr"},{"id":"de.velwebsolutions.mildcrowd.maezen.monat","tier":"maezen","rhythm":"monat"},{"id":"de.velwebsolutions.mildcrowd.maezen.jahr","tier":"maezen","rhythm":"jahr"}],"managed_by_google":false,"manage_url":"https:\/\/play.google.com\/store\/account\/subscriptions"}}}
+        {"data":{"state":"expired","subscription":null,"gift":null,"is_founding_member":false,"remaining_founding_seats":1000,"can_cancel":false,"can_withdraw":false,"purchased_gifts":[],"gift_offers":[{"tier":"solidar","name":"Solidar","price_label":"12 Monate für 30 €"},{"tier":"mittendrin","name":"Mittendrin","price_label":"12 Monate für 50 €"},{"tier":"maezen","name":"Mäzen","price_label":"12 Monate für 120 €"}],"checkout_enabled":true,"referral":{"earned_this_year":0,"waiting":0,"months_per_year":12},"apple":{"managed_by_apple":false,"manage_url":"https:\/\/apps.apple.com\/account\/subscriptions"},"google":{"available":true,"account_id":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08","products":[{"id":"mildcrowd.solidar.monat","tier":"solidar","rhythm":"monat"},{"id":"mildcrowd.solidar.jahr","tier":"solidar","rhythm":"jahr"},{"id":"mildcrowd.mittendrin.monat","tier":"mittendrin","rhythm":"monat"},{"id":"mildcrowd.mittendrin.jahr","tier":"mittendrin","rhythm":"jahr"},{"id":"mildcrowd.maezen.monat","tier":"maezen","rhythm":"monat"},{"id":"mildcrowd.maezen.jahr","tier":"maezen","rhythm":"jahr"}],"managed_by_google":false,"manage_url":"https:\/\/play.google.com\/store\/account\/subscriptions"}}}
     """.trimIndent()
 
     val subscriptionOverview = """
